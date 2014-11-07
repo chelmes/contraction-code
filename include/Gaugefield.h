@@ -46,12 +46,20 @@ class GaugeField {
 
     void read_gauge_field(const size_t slice_i, const size_t slice_f);
     void map_timeslice_to_eigen(const size_t t, const double* timeslice);
-    //void smearing_hyp(const double a_1, const double a_2, const int it);
+    void smearing_hyp(const size_t t, const double a_1, const double a_2, const size_t it);
     //void smearing_stout(double rho, int iter);
     //void smearing_ape( double alpha, int iter);
+    void init(const size_t LX, const size_t LY, const size_t LZ);
+    //Test functions for navigation
+    int get_up(const int pos, const int dir);
+    int get_dn(const int pos, const int dir);
+    
   private:
   
-void read_lime_gauge_field_doubleprec_timeslices(double* gaugefield, const char* filename, const size_t slice_i, const size_t slice_f);
+  void read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
+                                                   const char* filename,
+                                                   const size_t slice_i,
+                                                   const size_t slice_f);
   //vector holding multiarrays for range of timeslices
   std::vector<array_3cd_d2_eigen> tslices;
   //!
