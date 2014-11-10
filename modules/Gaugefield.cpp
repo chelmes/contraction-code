@@ -11,6 +11,10 @@ GaugeField::GaugeField(const size_t t0, const size_t tf, const size_t v3,
 
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//Initialize the lookup tables/////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 void GaugeField::init(const size_t L1, const size_t L2, const size_t L3){
   int* x0_h = new int[3];
   int* x1_h = new int[3];
@@ -70,7 +74,9 @@ int GaugeField::get_up(const int pos, const int dir){
 int GaugeField::get_dn(const int pos, const int dir){
   return idown[pos][dir];
 }
-
+///////////////////////////////////////////////////////////////////////////////
+//Transform one timeslice from lime array to array_3cd_d2_eigen////////////////
+///////////////////////////////////////////////////////////////////////////////
 //mapping from gauge config to Eigen 3x3 complex matrix arrays
 void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice) {
   int L1 = global_data->get_Lx();
@@ -120,6 +126,9 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
   std::cout << el_input << " doubles read in from ildg timeslice " << std::endl;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+//Useful helpers for smearing and gaugetrafos//////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 std::array< int, 2 > get_dirs(int mu) {
   std::array<int,2> dirs;  
   if (mu == 0) {
@@ -165,6 +174,111 @@ static Eigen::Matrix3cd proj_to_su3_imp(Eigen::Matrix3cd& in){
   return in;
   
 }
+///////////////////////////////////////////////////////////////////////////////
+//Smearing methods/////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//Stout-Smearing
+void GaugeField::smearing_stout(const size_t t, const double rho, const size_t iter) {
+
+  //parameter passing still to be improved
+  const int LX = global_data -> get_Lx();
+  const int LY = global_data -> get_Ly();
+  const int LZ = global_data -> get_Lz();
+  const int V3 = LX * LY * LZ;
+
+  std::complex<double> im_half(0,0.5);
+  array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);
+ // Eigen::Matrix3cd **eigen_timeslice_ts = new Eigen::Matrix3cd *[V3]; 
+ // for ( auto i = 0; i < V3; ++i ) {
+ //   eigen_timeslice_ts[i] = new Eigen::Matrix3cd[3];
+ // }
+  for (int j = 0; j < iter; ++j) {
+    for (int i = 0; i < V3; ++i) {
+      for (int dir = 0; dir < 3; ++dir) {
+        Eigen::Matrix3cd staple = Eigen::Matrix3cd::Zero(); //Holding all smearing matrices for one link
+        //filling each element of smearer using 3 links
+        //For each link calculate staples summing them up
+        for (int not_dir = 0; not_dir < 3; ++not_dir) {
+          if (dir != not_dir) {
+            int mu = iup[i][not_dir];
+            int nu = iup[mu][dir];
+            int eta = idown[nu][not_dir];
+            //Staples in positive direction
+            staple += (tslices.at(t))[i][not_dir]*
+                      ( (tslices.at(t))[mu][dir]*
+                      ((tslices.at(t))[eta][not_dir].adjoint()));
+
+            mu = idown[i][not_dir];
+            nu = iup[mu][dir];
+            //Staples in negative direction
+            staple += ( (tslices.at(t))[mu][not_dir].adjoint() )*
+                      ( (tslices.at(t))[mu][dir] * (tslices.at(t))[nu][dir] );
+          }
+        }
+        Eigen::Matrix3cd omega = ( staple * ( rho/4. ) ) *
+                                 ( (tslices.at(t))[i][dir].adjoint() );
+        Eigen::Matrix3cd q = ( ( omega.adjoint() - omega ) * 0.5 ) -
+                             ( ( ( ( omega.adjoint() - omega ).trace() ) *
+                              Eigen::Matrix3cd::Identity() ) * (1./6.) );
+        eigen_timeslice_ts[i][dir] = ( ( q*(-1) ).exp() ) *
+                                     (tslices.at(t))[i][dir];
+      }
+    }
+    for ( auto i = 0; i < V3; ++i ) {
+      for ( auto mu = 0; mu < 3; ++mu) {
+        tslices.at(t)[i][mu] = eigen_timeslice_ts[i][mu];
+      }
+    }
+  }
+}
+
+//APE-Smearing
+void GaugeField::smearing_ape(const size_t t, const double alpha_1, const size_t iter){
+
+  //parameter passing still to be improved
+  const int LX = global_data -> get_Lx();
+  const int LY = global_data -> get_Ly();
+  const int LZ = global_data -> get_Lz();
+  const int V3 = LX * LY * LZ;
+  //Eigen::Matrix3cd **eigen_timeslice_ts = new Eigen::Matrix3cd *[V3]; 
+  //for ( auto i = 0; i < V3; ++i ) {
+  //  eigen_timeslice_ts[i] = new Eigen::Matrix3cd[3];
+  //}
+  //temporal timeslice from decorated links
+  array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);  
+  for (int j = 0; j < iter; ++j) {
+    for (int i = 0; i < V3; ++i) {
+      for (int dir = 0; dir < 3; ++dir) {
+        Eigen::Matrix3cd staple = Eigen::Matrix3cd::Zero(); //Holding all smearing matrices for one link
+        //filling each element of smearer using 3 links
+        //Position indices mu nu eta
+        for (int not_dir = 0; not_dir < 3; ++not_dir) {
+          if (dir != not_dir) {
+            int mu = iup[i][not_dir];
+            int nu = iup[mu][dir];
+            int eta = idown[nu][not_dir];
+            //Staples in positive direction
+            staple += (tslices.at(t))[i][not_dir]*
+              ( (tslices.at(t))[mu][dir] * ((tslices.at(t))[eta][not_dir].adjoint()) );
+
+            mu = idown[i][not_dir];
+            nu = iup[mu][dir];
+            //Staples in negative direction
+            staple += (tslices.at(t)[mu][not_dir].adjoint()) *
+              ((tslices.at(t))[mu][dir] * (tslices.at(t))[nu][dir]);
+          }
+        }
+        eigen_timeslice_ts[i][dir] = (tslices.at(t)[i][dir] * (1.-alpha_1)) + (staple * alpha_1/4.);
+      }
+    }
+    for ( auto i = 0; i < V3; ++i ) {
+      for ( auto mu = 0; mu < 3; ++mu) {
+        tslices.at(t)[i][mu] = proj_to_su3_imp(eigen_timeslice_ts[i][mu]);
+      }
+    }
+  }
+}
+
 //HYP-Smearing
 
 void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const double alpha_2,
@@ -176,19 +290,9 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
   const int V3 = LX * LY * LZ;
   //temporal timeslice twice the size for decorated links
   array_3cd_d2_eigen dec_timeslice(boost::extents[V3][6]);
-  //Eigen::Matrix3cd **dec_timeslice = new Eigen::Matrix3cd *[V3];
-  //for (int vol = 0; vol < V3; ++vol) {
-  //  dec_timeslice[vol] = new Eigen::Matrix3cd[6];
-  //}
 
   //temporal timeslice from decorated links
-  array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);
-  //Eigen::Matrix3cd **eigen_timeslice_ts = new Eigen::Matrix3cd *[V3]; 
-  //for ( int i = 0; i < V3; ++i ) {
-  //  eigen_timeslice_ts[i] = new Eigen::Matrix3cd[3];
-  //}
-  
-  
+  array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);  
   //temporal integers holding directions for decorated smearing
   int mu, nu, eta;
   for (int run = 0; run < iter; ++run) {
@@ -205,20 +309,16 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
           mu = iup[vol][perp_dir];
           nu = iup[mu][dir];
           eta = iup[vol][dir];
-
-
           //product of up matrices
           inner_staple = tslices.at(t)[vol][perp_dir] * ( tslices.at(t)[mu][dir] *
                         ( tslices.at(t)[eta][perp_dir].adjoint() ) ); 
           //down-type smearing indices
           mu = idown[vol][perp_dir];
           nu = iup[mu][dir];
-
           //eta is same endpoint no adjoint necessary here
           //product of down matrices
           inner_staple += ( tslices.at(t)[mu][perp_dir].adjoint() ) *
                           ( tslices.at(t)[mu][dir] * tslices.at(t)[nu][perp_dir] );
-
           //Careful placement of decorated links in dec_timeslices:
           //dir=0 has placement in dec_dir = 0 (smeared in 1 plane)
           //                       dec_dir = 3 (smeared in 2 plane)
@@ -230,7 +330,6 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
                               (1-alpha_2) ) +  ( inner_staple * alpha_2/2.);  
           int n_el = it_perp_dir - perpendics.begin();
           tmp_staples.at(n_el) = proj_to_su3_imp(stac);
-          //tmp_staples.at(n_el) = stac;//without SU(3) projection
         }
 
         //staple link in direction dir in non participating and negative directions
@@ -283,6 +382,56 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
   //clean up
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///Displacement routines, returning one Eigenvector////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//Symmetrized derivative
+Eigen::VectorXcd GaugeField::lr_disp(const Eigen::MatrixXcd& v, const size_t p, const size_t t,
+                                      const size_t dir, const size_t ev ) {
+  //parameter passing still to be improved
+  const int LX = global_data -> get_Lx();
+  const int LY = global_data -> get_Ly();
+  const int LZ = global_data -> get_Lz();
+  const int V3 = LX * LY * LZ;
+
+  //Information on Matrix size
+  const int dim_row = V3*3;
+
+  //Loop over all eigenvectors in 
+//    std::cout << "eigenvector: " << i << std::endl;
+    //storing eigenvector
+    Eigen::VectorXcd in(dim_row);
+    Eigen::VectorXcd out(dim_row);
+
+    in = v.col(ev);
+
+    //Displace eigenvector
+    for (int spatial_ind = 0; spatial_ind < V3; ++spatial_ind) {
+      //std::cout << "x: " << spatial_ind << std::endl;
+      Eigen::Vector3cd tmp;
+      Eigen::Vector3cd quark_up;
+      Eigen::Vector3cd quark_down;
+
+      //determine needed indices from lookup tables;
+      int up_ind = iup[spatial_ind][dir];
+      int down_ind = idown[spatial_ind][dir];
+
+      quark_up = in.segment(3*up_ind,3);
+      quark_down = in.segment(3*down_ind,3);
+      tmp = ( ( (tslices.at(t))[spatial_ind][dir] * quark_up)); 
+      //tmp = 0.5*( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
+      //    ( ( (tslices.at(t))[down_ind][dir].adjoint() ) * quark_down) ); 
+      out.segment(3*spatial_ind,3) = tmp;
+
+    }//end spatial loop
+  return out;
+}
+
+//Rightderivative
+
+///////////////////////////////////////////////////////////////////////////////
+///Data IO from and to files///////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //Read in gauge field to vector of timeslices
 void GaugeField::read_gauge_field(const size_t slice_i, const size_t slice_f){
   char filename[200];

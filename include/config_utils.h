@@ -24,7 +24,7 @@
 void hopping3d(int** iup, int** idown);
 
 // write timeslice of ildg-message to array of eigen-matrices
-void map_timeslice_to_eigen(Eigen::Matrix3cd **eigen, double *timeslice);
+//void map_timeslice_to_eigen(Eigen::Matrix3cd **eigen, double *timeslice);
 
 // Right displacement of one eigensystem
 void right_displacement_one_dir(Eigen::Matrix3cd** config, int** iup, 
@@ -36,7 +36,7 @@ void right_displacement_one_dir(Eigen::Matrix3cd** config, int** iup,
 void smearing_hyp(Eigen::Matrix3cd **eigen_timeslice, double alpha_1, double alpha_2, int iter);
 
 // empty function header for compiling! No single precision support
-void read_lime_gauge_field_singleprec(double *config, const char * filename,
-    const int T, const int LX, const int LY, const int LZ);
+//void read_lime_gauge_field_singleprec(double *config, const char * filename,
+//    const int T, const int LX, const int LY, const int LZ);
 
 #endif /* CONFIGS_H_ */

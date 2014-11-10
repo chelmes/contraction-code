@@ -1,4 +1,4 @@
-#include <VDaggerV.h>
+#include "VdaggerV.h"
 
 // Definition of a pointer on global data
 static GlobalData * const global_data = GlobalData::Instance();
@@ -91,7 +91,7 @@ static void read_eigenvectors_from_file (LapH::EigenVector& V,
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
-void LapH::VdaggerV::build_source_matrix (const int config_i) {
+void LapH::VdaggerV::build_source_matrix (const int config_i, const GaugeField& field) {
 
   clock_t t2 = clock();
   std::cout << "\tbuild source matrix:";
@@ -146,29 +146,33 @@ void LapH::VdaggerV::build_source_matrix (const int config_i) {
            } // end if momentum
          // case displacement
          } 
-//        else {
-//
-//          (W_t).setZero();
-//
-//          //Time Slice of Configuration
-//          //Factor 3 for second color index, 2 for complex numbers
-//          double* timeslice = gaugefield + (t * dim_row * 3 * 2);
-//
-//          //Write Timeslice in Eigen Array
-//          map_timeslice_to_eigen(eigen_timeslice, timeslice);
-//
-//          //displacement in one direction i acting to the right
-////          right_displacement_one_dir(eigen_timeslice, iup, idown, dir - 1, 
-////              V_t[0], W_t);
-//          // dir = 3 for z-displacement (1 x 2 y)
-//          // W holds DV
-//
-//          if(p == nb_mom/2) {
-//
-//            vdaggerv[nb_mom/2][t][dir] = V_t[0].adjoint() * W_t
-//                - W_t.adjoint() * V_t[0];
-//
-//          } else {
+        else {
+
+          (W_t).setZero();
+
+          //Time Slice of Configuration
+          //Factor 3 for second color index, 2 for complex numbers
+          double* timeslice = gaugefield + (t * dim_row * 3 * 2);
+
+          //Write Timeslice in Eigen Array
+          map_timeslice_to_eigen(eigen_timeslice, timeslice);
+
+          //displacement in one direction i acting to the right
+//          right_displacement_one_dir(eigen_timeslice, iup, idown, dir - 1, 
+//              V_t[0], W_t);
+          // dir = 3 for z-displacement (1 x 2 y)
+          // W holds DV
+
+          if(p == nb_mom/2) {
+            for(size_t ev = 0; ev < nb_ev; ev++){
+              W_t.col(ev) = field -> lr_disp(this, p, t, dir, ev);
+            }
+            vdaggerv[nb_mom/2][t][dir] = V_t[0].adjoint() * W_t
+                - W_t.adjoint() * V_t[0];
+
+            std::cout << vdaggerv[nb_mom/2][t][dir].block(0,0,3,3) << std::endl; 
+          } 
+//          else {
 //
 //            // momentum vector contains exp(-i p x)
 //            // Divisor 3 for colour index. All three colours on same lattice site get

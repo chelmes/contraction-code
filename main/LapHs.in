@@ -19,7 +19,7 @@ name_eigenvectors   = eigenvectors
 path_perambulators  = /hiskp2/werner/G4
 name_perambulators  = perambulator
 # output path
-output_path = /hiskp2/werner/LapH/correlators
+output_path = /hiskp2/helmes/testdata/correlators
 lattice = G4
 
 # momentum handling:

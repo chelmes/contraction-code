@@ -12,6 +12,7 @@
 #include "Eigen/Dense"
 
 #include "EigenVector.h"
+#include "Gaugefield.h"
 #include "GlobalData.h"
 
 namespace LapH {
@@ -40,7 +41,7 @@ public:
   VdaggerV ();
   ~VdaggerV () {};
 
-  void build_source_matrix (const int config_i);
+  void build_source_matrix (const int config_i, const GaugeField& v);
   // () operator to directly access the elements of vec
   inline const Eigen::MatrixXcd& operator()(const size_t p, const size_t t, 
                                       const size_t d) const {

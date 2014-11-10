@@ -17,12 +17,19 @@ int main(int ac, char* av[]) {
   GlobalData* global_data = GlobalData::Instance();
   global_data->read_parameters(ac, av);
   GaugeField gf(0,3,64,3);
+  LapH::EigenVector evec(4,4*4*4*3, 4);
+  evec.read_eigen_vector("/hiskp2/eigensystems/test4x4x4x4/eigenvectors.1000.",1);
   gf.init(4,4,4);
   gf.read_gauge_field(0,3);
   std::cout << gf(3,4,2) << std::endl;
-  gf.smearing_hyp(3,0.62,0.62,2);
+  gf.smearing_stout(3,0.62,3);
+  std::cout << (evec[0] * evec[0].adjoint()).trace() << std::endl;
+  Eigen::MatrixXcd W = Eigen::MatrixXcd::Zero(4*4*4*3,4);
+  for(int i=0; i < 4; ++i){
+    W.col(i) = gf.lr_disp(evec[0],0,0,1,i);
+  }
+  std::cout << (W * W.adjoint()).trace() << std::endl;
   std::cout << gf(3,4,2) << std::endl;
-  std::cout << gf.get_up(4,1) << std::endl;
   return 0;
 
 }

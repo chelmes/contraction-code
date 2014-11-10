@@ -68,53 +68,53 @@ void hopping3d(int** iup, int** idown){
   delete [] x2_h;
 }
 
-//Get SU(3)-Matrices from timeslice and sort them into Eigen Array
-void map_timeslice_to_eigen(Eigen::Matrix3cd **eigen, double *timeslice) {
-
-  const int Lx = global_data->get_Lx();
-  const int Ly = global_data->get_Ly();
-  const int Lz = global_data->get_Lz();
-  const int Vs = Lx * Ly * Lz;
-  const int V_TS = global_data->get_V_TS();
-  
-  //Number of directions
-  const int NDIR = 4;
-  //Number of colors
-  const int NCOL = 3;
-
-  //read in elements
-  int el_input = 0;
-  for (int z = 0; z < Lz; ++z) {//spatial loops
-    for (int y = 0; y < Ly; ++y) {
-      for (int x = 0; x < Lx; ++x) {
-        for (int mu = 1; mu < 4; ++mu) {//direction loop
-          std::complex< double > array[9];
-          for (int a = 0; a < 3; ++a) {//colour loops
-            for (int b = 0; b < 3; ++b) {
-              //timeslice index of real part
-              int ind_r = z*V_TS/Lz+y*V_TS/(Lz*Ly)+x*V_TS/(Vs)+
-                mu*V_TS/(Vs*NDIR)+a*V_TS/(Lx*Ly*Lz*NDIR*NCOL)
-                +b*V_TS/(Vs*NDIR*NCOL*NCOL)+0;
-              //timeslice index of imaginary part
-              int ind_i = z*V_TS/Lz+y*V_TS/(Lz*Ly)+x*V_TS/(Vs)+
-                mu*V_TS/(Vs*NDIR)+a*V_TS/(Vs*NDIR*NCOL)
-                +b*V_TS/(Vs*NDIR*NCOL*NCOL)+1;
-              std::complex<double> pair(timeslice[ind_r], timeslice[ind_i]);
-              //array to be mapped to Eigen Array
-              array[3*b+a] = pair;
-              ++el_input;
-            }
-          }
-          Eigen::Map<Eigen::Matrix3cd> dummy (array);
-          //spatial index
-          int ind = z*Ly*Lx+y*Lx+x;
-          eigen[ind][mu-1] = dummy;
-        }
-      }
-    }
-  }
-  //std::cout << el_input << " doubles read in from ildg timeslice " << std::endl;
-}
+////Get SU(3)-Matrices from timeslice and sort them into Eigen Array
+//void map_timeslice_to_eigen(Eigen::Matrix3cd **eigen, double *timeslice) {
+//
+//  const int Lx = global_data->get_Lx();
+//  const int Ly = global_data->get_Ly();
+//  const int Lz = global_data->get_Lz();
+//  const int Vs = Lx * Ly * Lz;
+//  const int V_TS = global_data->get_V_TS();
+//  
+//  //Number of directions
+//  const int NDIR = 4;
+//  //Number of colors
+//  const int NCOL = 3;
+//
+//  //read in elements
+//  int el_input = 0;
+//  for (int z = 0; z < Lz; ++z) {//spatial loops
+//    for (int y = 0; y < Ly; ++y) {
+//      for (int x = 0; x < Lx; ++x) {
+//        for (int mu = 1; mu < 4; ++mu) {//direction loop
+//          std::complex< double > array[9];
+//          for (int a = 0; a < 3; ++a) {//colour loops
+//            for (int b = 0; b < 3; ++b) {
+//              //timeslice index of real part
+//              int ind_r = z*V_TS/Lz+y*V_TS/(Lz*Ly)+x*V_TS/(Vs)+
+//                mu*V_TS/(Vs*NDIR)+a*V_TS/(Lx*Ly*Lz*NDIR*NCOL)
+//                +b*V_TS/(Vs*NDIR*NCOL*NCOL)+0;
+//              //timeslice index of imaginary part
+//              int ind_i = z*V_TS/Lz+y*V_TS/(Lz*Ly)+x*V_TS/(Vs)+
+//                mu*V_TS/(Vs*NDIR)+a*V_TS/(Vs*NDIR*NCOL)
+//                +b*V_TS/(Vs*NDIR*NCOL*NCOL)+1;
+//              std::complex<double> pair(timeslice[ind_r], timeslice[ind_i]);
+//              //array to be mapped to Eigen Array
+//              array[3*b+a] = pair;
+//              ++el_input;
+//            }
+//          }
+//          Eigen::Map<Eigen::Matrix3cd> dummy (array);
+//          //spatial index
+//          int ind = z*Ly*Lx+y*Lx+x;
+//          eigen[ind][mu-1] = dummy;
+//        }
+//      }
+//    }
+//  }
+//  //std::cout << el_input << " doubles read in from ildg timeslice " << std::endl;
+//}
 
 //Displacements
 
