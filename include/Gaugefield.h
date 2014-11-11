@@ -63,8 +63,9 @@ class GaugeField {
     //Test functions for navigation
     int get_up(const int pos, const int dir);
     int get_dn(const int pos, const int dir);
-    Eigen::VectorXcd lr_disp(const Eigen::MatrixXcd& v, const size_t p, const size_t t,
-                                      const size_t dir, const size_t ev); 
+    //Displacement as Vector and Matrix form
+    Eigen::MatrixXcd disp(const Eigen::MatrixXcd& v, const size_t t,
+                             const size_t dir, bool sym);
   private:
   
   void read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
@@ -73,6 +74,8 @@ class GaugeField {
                                                    const size_t slice_f);
   //vector holding multiarrays for range of timeslices
   std::vector<array_3cd_d2_eigen> tslices;
+  //One gaugefield of size V3
+  Eigen::MatrixXcd omega;
   //!
   //!Memory for the whole gauge configuration in lime layout
   //!

@@ -370,7 +370,8 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
                 (dec_timeslice[mu][b]*dec_timeslice[nu][a]); //structure has to be a_dag, b, a
             }
           }
-          eigen_timeslice_ts[i][dir] = (tslices.at(t)[i][dir] * (1.-alpha_1)) + (outer_staple * alpha_1/4.);
+          eigen_timeslice_ts[i][dir] = (tslices.at(t)[i][dir] * (1.-alpha_1)) +
+                                       (outer_staple * alpha_1/4.);
         }
       }
       for ( int i = 0; i < V3; ++i ) {
@@ -385,9 +386,9 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
 ///////////////////////////////////////////////////////////////////////////////
 ///Displacement routines, returning one Eigenvector////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-//Symmetrized derivative
-Eigen::VectorXcd GaugeField::lr_disp(const Eigen::MatrixXcd& v, const size_t p, const size_t t,
-                                      const size_t dir, const size_t ev ) {
+//Derivative, toogle symmetrization via sym
+Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
+                                     const size_t t, const size_t dir, bool sym ) {
   //parameter passing still to be improved
   const int LX = global_data -> get_Lx();
   const int LY = global_data -> get_Ly();
@@ -396,13 +397,13 @@ Eigen::VectorXcd GaugeField::lr_disp(const Eigen::MatrixXcd& v, const size_t p, 
 
   //Information on Matrix size
   const int dim_row = V3*3;
-
+  const int dim_col = v.cols();
   //Loop over all eigenvectors in 
 //    std::cout << "eigenvector: " << i << std::endl;
     //storing eigenvector
     Eigen::VectorXcd in(dim_row);
-    Eigen::VectorXcd out(dim_row);
-
+    Eigen::MatrixXcd out(dim_row, dim_col);
+  for(int ev=0; ev < dim_col; ++ev){ 
     in = v.col(ev);
 
     //Displace eigenvector
@@ -418,17 +419,50 @@ Eigen::VectorXcd GaugeField::lr_disp(const Eigen::MatrixXcd& v, const size_t p, 
 
       quark_up = in.segment(3*up_ind,3);
       quark_down = in.segment(3*down_ind,3);
-      tmp = ( ( (tslices.at(t))[spatial_ind][dir] * quark_up)); 
-      //tmp = 0.5*( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
-      //    ( ( (tslices.at(t))[down_ind][dir].adjoint() ) * quark_down) ); 
-      out.segment(3*spatial_ind,3) = tmp;
-
+      if(sym) {
+        tmp = 0.5*( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
+            ( ( (tslices.at(t))[down_ind][dir].adjoint() ) * quark_down) ); 
+      }
+      else { 
+        Eigen::Vector3cd quark_point = in.segment(3*spatial_ind,3);
+        tmp =  ( (tslices.at(t))[spatial_ind][dir] * quark_up) - quark_point ;
+      }
+      (out.col(ev)).segment(3*spatial_ind,3) = tmp;
     }//end spatial loop
+  }//end eigenvector loop
   return out;
 }
 
-//Rightderivative
+///////////////////////////////////////////////////////////////////////////////
+///Gaugefield transformations//////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
+//Gauge-transform config and store transformed in gauge_config
+void GaugeField::trafo_ts( Eigen::Matrix3cd* Omega) {
+
+  int V3 = pars -> get_int("V3");
+  /*
+  //SU(3)-gauge field of same size as config
+  Eigen::Matrix3cd* Omega = new Eigen::Matrix3cd [V3];
+  build_gauge_array(Omega);
+  write_gauge_matrices("ts_trafo_log.bin", Omega);
+  */
+  for ( int i = 0; i < V3; ++i ) {
+    for ( int mu = 0; mu < 3; ++mu ) {
+      int j = lookup -> get_up(i,mu);
+      this -> set_gauge(i,mu, (Omega[i].adjoint())* ( (this -> get_gauge(i,mu) ) * Omega[j]) );
+    //std::cout << "gauge config: \n" << gauge_config[i][mu] << "\n\n";
+     // std::cout << "config: \n" << config[i][mu] << "\n\n\n";
+    }
+  }
+//  delete[] Omega;
+  /*for ( auto i = 0; i < V3; ++i ) {
+    for ( auto mu = 0; mu < 3; ++mu ) {
+      config[i][mu] = gauge_config[i][mu];
+    }
+  }*/
+
+}
 ///////////////////////////////////////////////////////////////////////////////
 ///Data IO from and to files///////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -448,7 +482,10 @@ void GaugeField::read_gauge_field(const size_t slice_i, const size_t slice_f){
 }
 
 //Read in the gaugefield, deprecated tmLqcd routine
-void GaugeField::read_lime_gauge_field_doubleprec_timeslices(double* gaugefield, const char* filename, const size_t slice_i, const size_t slice_f) {
+void GaugeField::read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
+                                                             const char* filename,
+                                                             const size_t slice_i,
+                                                             const size_t slice_f) {
 
   try{
     const int Lt = global_data -> get_Lt();
