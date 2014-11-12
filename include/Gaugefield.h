@@ -66,6 +66,10 @@ class GaugeField {
     //Displacement as Vector and Matrix form
     Eigen::MatrixXcd disp(const Eigen::MatrixXcd& v, const size_t t,
                              const size_t dir, bool sym);
+    //Gauge Transformation of tslices
+    //build gauge array
+    void build_gauge_array(const size_t trange);
+    void trafo(const size_t t0, const size_t tf);
   private:
   
   void read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
@@ -74,8 +78,8 @@ class GaugeField {
                                                    const size_t slice_f);
   //vector holding multiarrays for range of timeslices
   std::vector<array_3cd_d2_eigen> tslices;
-  //One gaugefield of size V3
-  Eigen::MatrixXcd omega;
+  //One gaugefield of size V3 for every timeslice
+  array_3cd_d2_eigen omega;
   //!
   //!Memory for the whole gauge configuration in lime layout
   //!

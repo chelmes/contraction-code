@@ -127,7 +127,7 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-//Useful helpers for smearing and gaugetrafos//////////////////////////////////
+//helpers for smearing and gaugetrafos/////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 std::array< int, 2 > get_dirs(int mu) {
   std::array<int,2> dirs;  
@@ -165,6 +165,18 @@ static int decor (int dir, int smear_plane) {
   return ret;
 }
 
+//checks if su is SU(3) matrix by tr(x*x^dagger) and sum(x*x^dagger)
+static void check_su3(const Eigen::Matrix3cd& su) {
+
+  std::complex<double> test1 =  (su * su.adjoint() ).trace();
+  std::complex<double> test2 =  (su * su.adjoint() ).sum();
+  
+  if ( ( (abs(test1) - 3.) > 10e-11 ) || ( (abs(test2) - 3.) > 10e-11 ) ) {
+    std::cout << std::setprecision(13) << " det:  " << su.determinant() << "\n tr: " << test1 
+      << "\n sum: " << test2 << "\n" << std::endl;
+  }
+}
+
 static Eigen::Matrix3cd proj_to_su3_imp(Eigen::Matrix3cd& in){
   //avoid possible aliasing issues:
   Eigen::Matrix3cd out = ( (in.adjoint() * in).sqrt() ).inverse();
@@ -174,6 +186,21 @@ static Eigen::Matrix3cd proj_to_su3_imp(Eigen::Matrix3cd& in){
   return in;
   
 }
+//Build a SU(3)-matrix from a random complex matrix and a back-projection
+static Eigen::Matrix3cd construct_random_su3() {
+  
+  std::vector<std::complex<double> > random(9);
+  //9 complex random numbers
+  for (auto& c : random )
+    c = std::complex<double>( (double(rand()) / RAND_MAX ) -
+        0.5,(double(rand()) / RAND_MAX ) - 0.5 ); 
+  Eigen::Matrix3cd y = Eigen::Matrix<std::complex<double>,3,3,Eigen::RowMajor>(random.data());
+  y = proj_to_su3_imp(y);
+  check_su3(y);
+  return y;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //Smearing methods/////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -181,10 +208,10 @@ static Eigen::Matrix3cd proj_to_su3_imp(Eigen::Matrix3cd& in){
 void GaugeField::smearing_stout(const size_t t, const double rho, const size_t iter) {
 
   //parameter passing still to be improved
-  const int LX = global_data -> get_Lx();
-  const int LY = global_data -> get_Ly();
-  const int LZ = global_data -> get_Lz();
-  const int V3 = LX * LY * LZ;
+  const size_t LX = global_data -> get_Lx();
+  const size_t LY = global_data -> get_Ly();
+  const size_t LZ = global_data -> get_Lz();
+  const size_t V3 = LX * LY * LZ;
 
   std::complex<double> im_half(0,0.5);
   array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);
@@ -192,13 +219,13 @@ void GaugeField::smearing_stout(const size_t t, const double rho, const size_t i
  // for ( auto i = 0; i < V3; ++i ) {
  //   eigen_timeslice_ts[i] = new Eigen::Matrix3cd[3];
  // }
-  for (int j = 0; j < iter; ++j) {
-    for (int i = 0; i < V3; ++i) {
-      for (int dir = 0; dir < 3; ++dir) {
+  for (size_t j = 0; j < iter; ++j) {
+    for (size_t i = 0; i < V3; ++i) {
+      for (size_t dir = 0; dir < 3; ++dir) {
         Eigen::Matrix3cd staple = Eigen::Matrix3cd::Zero(); //Holding all smearing matrices for one link
         //filling each element of smearer using 3 links
         //For each link calculate staples summing them up
-        for (int not_dir = 0; not_dir < 3; ++not_dir) {
+        for (size_t not_dir = 0; not_dir < 3; ++not_dir) {
           if (dir != not_dir) {
             int mu = iup[i][not_dir];
             int nu = iup[mu][dir];
@@ -224,8 +251,8 @@ void GaugeField::smearing_stout(const size_t t, const double rho, const size_t i
                                      (tslices.at(t))[i][dir];
       }
     }
-    for ( auto i = 0; i < V3; ++i ) {
-      for ( auto mu = 0; mu < 3; ++mu) {
+    for ( size_t i = 0; i < V3; ++i ) {
+      for ( size_t mu = 0; mu < 3; ++mu) {
         tslices.at(t)[i][mu] = eigen_timeslice_ts[i][mu];
       }
     }
@@ -236,23 +263,23 @@ void GaugeField::smearing_stout(const size_t t, const double rho, const size_t i
 void GaugeField::smearing_ape(const size_t t, const double alpha_1, const size_t iter){
 
   //parameter passing still to be improved
-  const int LX = global_data -> get_Lx();
-  const int LY = global_data -> get_Ly();
-  const int LZ = global_data -> get_Lz();
-  const int V3 = LX * LY * LZ;
+  const size_t LX = global_data -> get_Lx();
+  const size_t LY = global_data -> get_Ly();
+  const size_t LZ = global_data -> get_Lz();
+  const size_t V3 = LX * LY * LZ;
   //Eigen::Matrix3cd **eigen_timeslice_ts = new Eigen::Matrix3cd *[V3]; 
   //for ( auto i = 0; i < V3; ++i ) {
   //  eigen_timeslice_ts[i] = new Eigen::Matrix3cd[3];
   //}
   //temporal timeslice from decorated links
   array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);  
-  for (int j = 0; j < iter; ++j) {
-    for (int i = 0; i < V3; ++i) {
-      for (int dir = 0; dir < 3; ++dir) {
+  for (size_t j = 0; j < iter; ++j) {
+    for (size_t i = 0; i < V3; ++i) {
+      for (size_t dir = 0; dir < 3; ++dir) {
         Eigen::Matrix3cd staple = Eigen::Matrix3cd::Zero(); //Holding all smearing matrices for one link
         //filling each element of smearer using 3 links
         //Position indices mu nu eta
-        for (int not_dir = 0; not_dir < 3; ++not_dir) {
+        for (size_t not_dir = 0; not_dir < 3; ++not_dir) {
           if (dir != not_dir) {
             int mu = iup[i][not_dir];
             int nu = iup[mu][dir];
@@ -271,8 +298,8 @@ void GaugeField::smearing_ape(const size_t t, const double alpha_1, const size_t
         eigen_timeslice_ts[i][dir] = (tslices.at(t)[i][dir] * (1.-alpha_1)) + (staple * alpha_1/4.);
       }
     }
-    for ( auto i = 0; i < V3; ++i ) {
-      for ( auto mu = 0; mu < 3; ++mu) {
+    for ( size_t i = 0; i < V3; ++i ) {
+      for ( size_t mu = 0; mu < 3; ++mu) {
         tslices.at(t)[i][mu] = proj_to_su3_imp(eigen_timeslice_ts[i][mu]);
       }
     }
@@ -295,7 +322,7 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
   array_3cd_d2_eigen eigen_timeslice_ts(boost::extents[V3][3]);  
   //temporal integers holding directions for decorated smearing
   int mu, nu, eta;
-  for (int run = 0; run < iter; ++run) {
+  for (size_t run = 0; run < iter; ++run) {
     //calculate inner staple from original timeslice, store in dec_timeslice each link can get smeared in two planes
     for (int vol = 0; vol < V3; ++vol) {
       for (int dir = 0; dir < 3; ++dir) {
@@ -399,7 +426,6 @@ Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
   const int dim_row = V3*3;
   const int dim_col = v.cols();
   //Loop over all eigenvectors in 
-//    std::cout << "eigenvector: " << i << std::endl;
     //storing eigenvector
     Eigen::VectorXcd in(dim_row);
     Eigen::MatrixXcd out(dim_row, dim_col);
@@ -437,31 +463,42 @@ Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
 ///Gaugefield transformations//////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-//Gauge-transform config and store transformed in gauge_config
-void GaugeField::trafo_ts( Eigen::Matrix3cd* Omega) {
-
-  int V3 = pars -> get_int("V3");
-  /*
-  //SU(3)-gauge field of same size as config
-  Eigen::Matrix3cd* Omega = new Eigen::Matrix3cd [V3];
-  build_gauge_array(Omega);
-  write_gauge_matrices("ts_trafo_log.bin", Omega);
-  */
-  for ( int i = 0; i < V3; ++i ) {
-    for ( int mu = 0; mu < 3; ++mu ) {
-      int j = lookup -> get_up(i,mu);
-      this -> set_gauge(i,mu, (Omega[i].adjoint())* ( (this -> get_gauge(i,mu) ) * Omega[j]) );
-    //std::cout << "gauge config: \n" << gauge_config[i][mu] << "\n\n";
-     // std::cout << "config: \n" << config[i][mu] << "\n\n\n";
+//build gauge array
+void GaugeField::build_gauge_array(const size_t trange) {
+  //parameter passing still to be improved
+  const size_t LX = global_data -> get_Lx();
+  const size_t LY = global_data -> get_Ly();
+  const size_t LZ = global_data -> get_Lz();
+  const size_t V3 = LX * LY * LZ;
+  srand(1227);
+  //resize omega
+  omega.resize(boost::extents[trange][V3]);
+  //fill omega
+  for (size_t t = 0; t < trange; ++t ){
+    for (size_t vol = 0; vol < V3; ++vol){
+     omega[t][vol] = construct_random_su3();
     }
   }
-//  delete[] Omega;
-  /*for ( auto i = 0; i < V3; ++i ) {
-    for ( auto mu = 0; mu < 3; ++mu ) {
-      config[i][mu] = gauge_config[i][mu];
-    }
-  }*/
+}
+//Gauge-transform config for every timeslice
+void GaugeField::trafo(const size_t t0, const size_t tf) {
 
+  //parameter passing still to be improved
+  const size_t LX = global_data -> get_Lx();
+  const size_t LY = global_data -> get_Ly();
+  const size_t LZ = global_data -> get_Lz();
+  const size_t V3 = LX * LY * LZ;
+
+  build_gauge_array(tf-t0);
+  for(size_t t = t0; t < tf; ++t){
+    for ( size_t v = 0; v < V3; ++v ) {
+      for ( size_t mu = 0; mu < 3; ++mu ) {
+        int w = iup[v][mu];
+        tslices.at(t)[v][mu] = omega[t-t0][v].adjoint() *
+                               (tslices.at(t)[v][mu] * omega[t-t0][w]);
+      }
+    }
+  }
 }
 ///////////////////////////////////////////////////////////////////////////////
 ///Data IO from and to files///////////////////////////////////////////////////
@@ -473,7 +510,8 @@ void GaugeField::read_gauge_field(const size_t slice_i, const size_t slice_f){
   const int vol4 = global_data -> get_V_for_lime();
   const int V_TS = global_data -> get_V_TS();
   double* configuration = new double[vol4];
-  read_lime_gauge_field_doubleprec_timeslices(configuration, filename, slice_i, slice_f);
+  read_lime_gauge_field_doubleprec_timeslices(configuration, filename,
+                                              slice_i, slice_f);
   for (auto t = slice_i; t <= slice_f; ++t) {
     double* timeslice = configuration + V_TS*t;
     map_timeslice_to_eigen(t, timeslice);
@@ -488,17 +526,18 @@ void GaugeField::read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
                                                              const size_t slice_f) {
 
   try{
-    const int Lt = global_data -> get_Lt();
-    const int Lx = global_data -> get_Lx();
-    const int Ly = global_data -> get_Ly();
-    const int Lz = global_data -> get_Lz();
+    const size_t Lt = global_data -> get_Lt();
+    const size_t Lx = global_data -> get_Lx();
+    const size_t Ly = global_data -> get_Ly();
+    const size_t Lz = global_data -> get_Lz();
     const int verbose = global_data -> get_verbose();
 
     //const int slice_i = 0;
     //const int slice_f = Lt+1;
 
     FILE * ifs;
-    int t, x, y, z, status;
+    size_t t, x, y, z;
+    int status;
     n_uint64_t bytes;
     char * header_type;
     LimeReader * limereader;

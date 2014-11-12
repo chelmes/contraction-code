@@ -27,12 +27,13 @@ int main(int ac, char* av[]) {
   std::cout << gf(3,4,2) << std::endl;
   //smear gauge field
   gf.smearing_stout(3,0.62,3);
+  gf.trafo(0,3);
   std::cout << (evec[0] * evec[0].adjoint()).trace() << std::endl;
   //displace eigensystem
   Eigen::MatrixXcd W = Eigen::MatrixXcd::Zero(4*4*4*3,4);
     W.col(1) = gf.disp(evec[0].col(1),0,0,true);
-  std::cout << (W * W.adjoint()).trace() << std::endl;
-  std::cout << gf(3,4,2) << std::endl;
+  //std::cout << (W * W.adjoint()).trace() << std::endl;
+  //std::cout << gf(3,4,2) << std::endl;
   return 0;
 
 }
