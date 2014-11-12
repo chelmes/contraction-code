@@ -70,6 +70,10 @@ class GaugeField {
     //build gauge array
     void build_gauge_array(const size_t trange);
     void trafo(const size_t t0, const size_t tf);
+    Eigen::MatrixXcd transform_ev(const Eigen::MatrixXcd& eig_sys);
+    //Plaquette for one timeslice
+    double plaque_ts(const size_t t);
+    double plaque_pnt(const size_t mu, const size_t nu, const size_t vol, const size_t t);
   private:
   
   void read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,

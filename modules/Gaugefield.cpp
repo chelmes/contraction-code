@@ -500,6 +500,77 @@ void GaugeField::trafo(const size_t t0, const size_t tf) {
     }
   }
 }
+
+
+//TODO: work on interface with eigenvector class
+//transform matrix of eigenvectors with gauge array
+Eigen::MatrixXcd GaugeField::transform_ev(const Eigen::MatrixXcd& eig_sys) {
+
+  const size_t dim_col = eig_sys.cols();
+  const size_t dim_row = eig_sys.rows();
+  Eigen::MatrixXcd ret(dim_row,dim_col);
+  if (omega.shape()[0] == 0) build_gauge_array(1);
+  //write_gauge_matrices("ev_trafo_log.bin",Omega);
+
+  for (size_t nev = 0; nev < dim_col; ++nev) {
+    for (size_t vol = 0; vol < dim_row; ++vol) {
+      int ind_c = vol%3;
+      Eigen::Vector3cd tmp = omega[0][ind_c].adjoint() *
+                             (eig_sys.col(nev)).segment(ind_c,3); 
+      (ret.col(nev)).segment(ind_c,3) = tmp; 
+    }//end loop nev
+  }//end loop vol
+  return ret;
+}  
+
+///////////////////////////////////////////////////////////////////////////////
+///Calculate Plaquette for given timeslice/////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+//Plaquette of timeslice
+//calculate plaquettes at given point i
+double GaugeField::plaque_pnt(const size_t mu, const size_t nu, const size_t vol, const size_t t) { 
+
+  Eigen::Matrix3cd plaque;
+	size_t j,k,l;
+	double P;
+	j = iup[vol][mu];  //convention(up): 0:= n0+1, 1:= n1+1, 2:= n2+1, 3:= n3+1
+	k = iup[j][nu]; //convention(down): 0:= n0-1, 1:= n1-1, 2:= n2-1, 3:= n3-1
+	l = idown[k][mu];
+	Eigen::Matrix3cd a,b,c,d;
+	a = tslices.at(t)[vol][mu]; //convention links: 0:= n0+1, 1:= n1+1, 2:= n2+1, 3:= n3+1
+	b = tslices.at(t)[j][nu];
+	c = tslices.at(t)[l][mu].adjoint();
+	d = tslices.at(t)[vol][nu].adjoint();
+	plaque = a*(b*(c*d));
+	P = 1./3. * real(plaque.trace());
+	return P;
+}
+
+double GaugeField::plaque_ts(const size_t t){
+
+  //parameter passing still to be improved
+  const size_t LX = global_data -> get_Lx();
+  const size_t LY = global_data -> get_Ly();
+  const size_t LZ = global_data -> get_Lz();
+  const size_t V3 = LX * LY * LZ;
+
+  double plaquette = 0;
+  double cnt = 0;
+  for (size_t vol = 0; vol < V3; ++vol) {
+    for (size_t dir_1 = 0; dir_1 < 3; ++dir_1) {
+      for (size_t dir_2 = 0; dir_2 < 3; ++dir_2) {
+        //make sure not to run in same direction
+        if (dir_1 != dir_2) {
+          plaquette += plaque_pnt(dir_1, dir_2, vol, t);
+          ++cnt;
+        }
+      }//loop dir_2
+    }//loop_dir1
+  }//loop V3
+  return (plaquette/cnt);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 ///Data IO from and to files///////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

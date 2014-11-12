@@ -26,8 +26,11 @@ int main(int ac, char* av[]) {
   gf.read_gauge_field(0,3);
   std::cout << gf(3,4,2) << std::endl;
   //smear gauge field
-  gf.smearing_stout(3,0.62,3);
+  //gf.smearing_stout(3,0.62,3);
+  std::cout << gf.plaque_ts(0) << std::endl;
   gf.trafo(0,3);
+  std::cout << gf.plaque_ts(0) << std::endl;
+  Eigen::MatrixXcd evec_t = gf.transform_ev(evec[0]); 
   std::cout << (evec[0] * evec[0].adjoint()).trace() << std::endl;
   //displace eigensystem
   Eigen::MatrixXcd W = Eigen::MatrixXcd::Zero(4*4*4*3,4);
