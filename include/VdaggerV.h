@@ -40,12 +40,10 @@ public:
   VdaggerV ();
   ~VdaggerV () {};
 
-<<<<<<< HEAD
   void build_source_matrix (const int config_i, const GaugeField& v);
   // () operator to directly access the elements of vec
   inline const Eigen::MatrixXcd& operator()(const size_t p, const size_t t, 
                                       const size_t d) const {
-=======
   void build_vdaggerv(const int config_i);
   void build_rvdaggervr(const int config_i, 
                         const std::vector<LapH::RandomVector>& rnd_vec);
@@ -54,7 +52,6 @@ public:
   inline const Eigen::MatrixXcd& return_vdaggerv(const size_t p, 
                                                  const size_t t, 
                                                  const size_t d) const {
->>>>>>> upstream/pipi
     return vdaggerv[p][t][d];
   }
   // return reference on rvdaggervr
