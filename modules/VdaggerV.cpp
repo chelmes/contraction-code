@@ -96,11 +96,7 @@ static void read_eigenvectors_from_file (LapH::EigenVector& V,
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
-<<<<<<< HEAD
-void LapH::VdaggerV::build_source_matrix (const int config_i, const GaugeField& field) {
-=======
 void LapH::VdaggerV::build_vdaggerv (const int config_i) {
->>>>>>> upstream/pipi
 
   clock_t t2 = clock();
   std::cout << "\tbuild vdaggerv:";
@@ -204,7 +200,6 @@ void LapH::VdaggerV::build_rvdaggervr(const int config_i,
                                              std::conj(rnd_vec[rnd_j][blk_j]);
               }
             }
-<<<<<<< HEAD
             vdaggerv[p][t][0] = V_t[0].adjoint() * mom.asDiagonal() * V_t[0];
             vdaggerv[nb_mom - p - 1][t][0] =
                 (vdaggerv[p][t][0]).adjoint();
@@ -263,13 +258,11 @@ void LapH::VdaggerV::build_rvdaggervr(const int config_i,
     } // end for displacement
 
   } // loop over time ends here
-=======
           }
         }
       }
     }
   }}// time and momemtum loop ends here
->>>>>>> upstream/pipi
 
   t2 = clock() - t2;
   std::cout << std::setprecision(1) << "\t\tSUCCESS - " << std::fixed 
