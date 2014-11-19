@@ -20,7 +20,7 @@ all: rmxeq mkdep mkxeq
 
 MAIN = test_gaugefield
 
-GENERAL = GlobalData BasicOperator Perambulator io_utils config_utils RandomVector \
+GENERAL = GaugeField GlobalData BasicOperator Perambulator io_utils config_utils RandomVector \
           ranlxs EigenVector VdaggerV Correlators CrossOperator
 MODULES = $(GENERAL)
 

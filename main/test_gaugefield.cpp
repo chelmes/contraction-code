@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <typeinfo>
 
-#include "Gaugefield.h"
+#include "GaugeField.h"
 #include "GlobalData.h"
 #include "BasicOperator.h"
 #include "typedefs.h"
@@ -29,7 +29,7 @@ int main(int ac, char* av[]) {
   std::cout << gf.plaque_ts(0) << std::endl;
   gf.trafo(0,3);
   std::cout << gf.plaque_ts(0) << std::endl;
-  Eigen::MatrixXcd evec_t = gf.transform_ev(evec[0]); 
+  Eigen::MatrixXcd evec_t = gf.trafo_ev(evec[0]); 
   std::cout << (evec[0] * evec[0].adjoint()).trace() << std::endl;
   //displace eigensystem
   Eigen::MatrixXcd W = Eigen::MatrixXcd::Zero(4*4*4*3,4);

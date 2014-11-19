@@ -12,7 +12,7 @@
 #include "Eigen/Dense"
 
 #include "EigenVector.h"
-#include "Gaugefield.h"
+#include "GaugeField.h"
 #include "GlobalData.h"
 #include "RandomVector.h"
 
