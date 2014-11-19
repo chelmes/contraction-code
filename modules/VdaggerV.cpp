@@ -5,25 +5,30 @@ static GlobalData * const global_data = GlobalData::Instance();
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
-LapH::VdaggerV::VdaggerV() : vdaggerv(), momentum() {
+LapH::VdaggerV::VdaggerV() : vdaggerv(), rvdaggervr(), momentum(), nb_mom(1),
+                             is_vdaggerv_set(false) {
 
-  const int nb_ev = global_data->get_number_of_eigen_vec();
-  const int nb_mom = global_data->get_number_of_momenta();
-  const int Lt = global_data->get_Lt();
-  const int Vs = global_data->get_Lx() * global_data->get_Ly() * 
+  // is needed in the whole class
+  nb_mom = global_data->get_number_of_momenta();
+
+  const size_t nb_ev = global_data->get_number_of_eigen_vec();
+  const size_t Lt = global_data->get_Lt();
+  const size_t Vs = global_data->get_Lx() * global_data->get_Ly() * 
                  global_data->get_Lz();         
+  const std::vector<quark> quarks = global_data->get_quarks();
+  const size_t nb_rnd = quarks[0].number_of_rnd_vec;
+  const size_t dilE = quarks[0].number_of_dilution_E;
 
-  vdaggerv.resize(boost::extents[nb_mom][Lt][4]);
-  for(int p = 0; p < nb_mom; ++p) {
-    for(int t = 0; t < Lt; ++t){
-      // changed to case of no displacement. Else dir < 4
-      for(int dir = 0; dir < 4; dir++) {
-        // blocks in Basicoperator are on diagonal in the beginning. 
-        // non-zero blocks have row = col = blocknr
-        vdaggerv[p][t][dir] = Eigen::MatrixXcd::Zero(nb_ev, nb_ev);
-      }
-    }
-  }   
+  // TODO: just a workaround, must be read in via infile
+  const size_t nb_dis = 1;
+
+  // only half of the array is stored to save memory. But be carefull, it 
+  // must be mapped correctly from outside by addressing the memomentum
+  // correctly and daggering
+  vdaggerv.resize(boost::extents[nb_mom/2+1][Lt][4]);
+
+  //rvdaggervr.resize(boost::extents[nb_mom][Lt][4][nb_rnd][nb_rnd]);
+  rvdaggervr.resize(boost::extents[nb_mom/2+1][Lt][nb_dis][nb_rnd][nb_rnd]);
 
   momentum.resize(boost::extents[nb_mom][Vs]);
   create_momenta();
@@ -86,59 +91,120 @@ static void read_eigenvectors_from_file (LapH::EigenVector& V,
         + global_data->get_name_eigenvectors();
     sprintf(name, "%s.%04d.%03d", filename.c_str(), config_i, t);
 
-    V.read_eigen_vector(name, 0, 1);
+    V.read_eigen_vector(name, 0, 0);
 }
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
+<<<<<<< HEAD
 void LapH::VdaggerV::build_source_matrix (const int config_i, const GaugeField& field) {
+=======
+void LapH::VdaggerV::build_vdaggerv (const int config_i) {
+>>>>>>> upstream/pipi
 
   clock_t t2 = clock();
-  std::cout << "\tbuild source matrix:";
+  std::cout << "\tbuild vdaggerv:";
 
-  const int Lt = global_data->get_Lt();
-  const int dim_row = global_data->get_dim_row();
-  const int displ_min = global_data->get_displ_min();
-  const int displ_max = global_data->get_displ_max();
-  const int nb_ev = global_data->get_number_of_eigen_vec();
-  const int nb_mom = global_data->get_number_of_momenta();
+  const size_t Lt = global_data->get_Lt();
+  const size_t dim_row = global_data->get_dim_row();
+  const size_t displ_min = global_data->get_displ_min();
+  const size_t displ_max = global_data->get_displ_max();
+  const size_t nb_ev = global_data->get_number_of_eigen_vec();
 
-  // creating basic operator
+  std::fill(vdaggerv.origin(), vdaggerv.origin() + vdaggerv.num_elements(), 
+            Eigen::MatrixXcd::Zero(nb_ev, nb_ev));
+
+#pragma omp parallel
+{
   Eigen::MatrixXcd W_t = Eigen::MatrixXcd::Zero(dim_row, nb_ev);
   Eigen::VectorXcd mom = Eigen::VectorXcd::Zero(dim_row);
-
-  LapH::EigenVector V_t(1, dim_row, nb_ev);
-
-  for(int t = 0; t < Lt; ++t){
+  LapH::EigenVector V_t(1, dim_row, nb_ev);// each thread needs its own copy
+  #pragma omp for schedule(dynamic)
+  for(size_t t = 0; t < Lt; ++t){
 
     read_eigenvectors_from_file(V_t, config_i, t);
+    // zero momentum 
+    (vdaggerv[nb_mom/2][t][0]) = Eigen::MatrixXcd::Identity(nb_ev, nb_ev);
 
-//    std::cout << "V_t with t = " << t << std::endl;
-//    std::cout << std::setprecision(8) << V_t[0].block(0,0,6,12) << std::endl;
-//    std::cout << vdaggerv[nb_mom - p - 1][t][0].block(0,0,6,6) << std::endl;
-//        << std::endl << "\n" << s.block(0,0,6,6) << std::endl;
-//    std::cout << std::endl;
+    for(size_t p = 0; p < nb_mom/2; p++){
+      // momentum vector contains exp(-i p x). Divisor 3 for colour index. 
+      // All three colours on same lattice site get the same momentum.
+      for(size_t x = 0; x < dim_row; ++x) {
+        mom(x) = momentum[p][x/3];
+      }
+      vdaggerv[p][t][0] = V_t[0].adjoint() * mom.asDiagonal() * V_t[0];
+    } // loop over momentum
+  } // loop over time
+}// pragma omp parallel ends here
 
-    for(int dir = displ_min; dir < displ_max + 1; dir++) {
-      for(int p = nb_mom/2; p < nb_mom; p++){
-        // TODO: implement switch case for displacement
-        // case no displacement
-        if(dir == 0) {
-          // TODO: checking the order of loops - enhancement might be possible
-          // e.g. by reordering vdaggerv with t faster than rnd_i
+  // set flag that vdaggerv is set
+  is_vdaggerv_set = true;
 
-          // for p = 0, s is the unit matrix. Thus, the V.adjoint() * V multiplication
-          // can be omitted
-          // TODO: initialize somewhere in the constructor
-          if(p == (nb_mom/2)) // zero momentum
-            (vdaggerv[nb_mom/2][t][0]).Identity(nb_ev, nb_ev);
-          else { // not zero momentum
-            // momentum vector contains exp(-i p x)
-            // Divisor 3 for colour index. All three colours on same lattice site get
-            // the same momentum
-            for(int x = 0; x < dim_row; ++x) {
-              mom(x) = momentum[p][x/3];
+  t2 = clock() - t2;
+  std::cout << std::setprecision(1) << "\t\t\tSUCCESS - " << std::fixed 
+    << ((float) t2)/CLOCKS_PER_SEC << " seconds" << std::endl;
+}
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+void LapH::VdaggerV::build_rvdaggervr(const int config_i,
+                             const std::vector<LapH::RandomVector>& rnd_vec) {
+  // check of vdaggerv is already build
+  if(not is_vdaggerv_set){
+    std::cout << "\n\n\tCaution: vdaggerv is not set and rvdaggervr cannot be" 
+              << " computed\n\n" << std::endl;
+    exit(0);
+  }
+
+  clock_t t2 = clock();
+  std::cout << "\tbuild rvdaggervr:";
+
+  const size_t Lt = global_data->get_Lt();
+  const size_t dim_row = global_data->get_dim_row();
+  const size_t displ_min = global_data->get_displ_min();
+  const size_t displ_max = global_data->get_displ_max();
+  const size_t nb_ev = global_data->get_number_of_eigen_vec();
+  const size_t nb_mom = global_data->get_number_of_momenta();
+  const std::vector<quark> quarks = global_data->get_quarks();
+  const size_t dilE = quarks[0].number_of_dilution_E;
+  const size_t nb_rnd = quarks[0].number_of_rnd_vec;
+
+  std::fill(rvdaggervr.origin(), 
+            rvdaggervr.origin() + rvdaggervr.num_elements(), 
+            Eigen::MatrixXcd::Zero(dilE, 4*dilE));
+
+  // TODO: just a workaround
+  const size_t nb_dis = 1;
+
+  #pragma omp parallel for schedule(dynamic)
+  for(size_t t = 0; t < Lt; t++){
+  for(size_t p = 0; p <= nb_mom/2; p++){
+    for(size_t dis = 0; dis < nb_dis; ++dis) {
+      for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
+
+        Eigen::MatrixXcd M = Eigen::MatrixXcd::Zero(nb_ev, 4*dilE);
+        for(size_t dirac = 0; dirac < 4; dirac++){
+          for(size_t vec_i = 0; vec_i < nb_ev; ++vec_i) {
+            size_t blk_i =  dirac + vec_i * 4 + 4 * nb_ev * t;
+          
+              M.block(0, vec_i%dilE + dilE*dirac, nb_ev, 1) += 
+                                vdaggerv[p][t][dis].col(vec_i) * 
+                      rnd_vec[rnd_i][blk_i];
+          }
+        }
+        for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
+          if(rnd_i != rnd_j){
+            for(size_t dirac = 0; dirac < 4; dirac++){
+              for(size_t vec_j = 0; vec_j < nb_ev; ++vec_j) {
+                size_t blk_j =  dirac + vec_j * 4 + 4 * nb_ev * t;
+
+                rvdaggervr[p][t][dis][rnd_j][rnd_i]
+                              .block(vec_j%dilE, dilE*dirac , 1, dilE) +=
+                                     M.block(vec_j, dilE*dirac, 1, dilE) * 
+                                             std::conj(rnd_vec[rnd_j][blk_j]);
+              }
             }
+<<<<<<< HEAD
             vdaggerv[p][t][0] = V_t[0].adjoint() * mom.asDiagonal() * V_t[0];
             vdaggerv[nb_mom - p - 1][t][0] =
                 (vdaggerv[p][t][0]).adjoint();
@@ -197,11 +263,18 @@ void LapH::VdaggerV::build_source_matrix (const int config_i, const GaugeField& 
     } // end for displacement
 
   } // loop over time ends here
+=======
+          }
+        }
+      }
+    }
+  }}// time and momemtum loop ends here
+>>>>>>> upstream/pipi
 
   t2 = clock() - t2;
   std::cout << std::setprecision(1) << "\t\tSUCCESS - " << std::fixed 
     << ((float) t2)/CLOCKS_PER_SEC << " seconds" << std::endl;
-  return;
+
 }
 
 

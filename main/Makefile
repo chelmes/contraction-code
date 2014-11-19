@@ -20,8 +20,8 @@ all: rmxeq mkdep mkxeq
 
 MAIN = test_gaugefield
 
-GENERAL = GlobalData BasicOperator ReadWrite io_utils config_utils RandomVector \
-          ranlxs EigenVector Gaugefield 
+GENERAL = GlobalData BasicOperator Perambulator io_utils config_utils RandomVector \
+          ranlxs EigenVector VdaggerV Correlators CrossOperator
 MODULES = $(GENERAL)
 
 # search path for modules
@@ -46,7 +46,8 @@ LIBS = lime boost_program_options
 
 
 # scheduling and optimization options
-CFLAGS = -Wall -pedantic -std=c++0x  -O3 -fopenmp -march=native -Wno-unused-variable -Wno-unused-local-typedefs
+CFLAGS = -Wall -pedantic -std=c++0x -O3 -march=native -Wno-unused-variable \
+         -Wno-unused-local-typedefs -Wno-sign-compare -fopenmp  
 
 ############################## do not change ###################################
 

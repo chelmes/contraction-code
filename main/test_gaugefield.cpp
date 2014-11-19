@@ -9,7 +9,6 @@
 #include "Gaugefield.h"
 #include "GlobalData.h"
 #include "BasicOperator.h"
-#include "ReadWrite.h"
 #include "typedefs.h"
 
 int main(int ac, char* av[]) {
