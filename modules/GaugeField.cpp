@@ -74,9 +74,11 @@ int GaugeField::get_up(const int pos, const int dir){
 int GaugeField::get_dn(const int pos, const int dir){
   return idown[pos][dir];
 }
+
 ///////////////////////////////////////////////////////////////////////////////
 //Transform one timeslice from lime array to array_3cd_d2_eigen////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
 //mapping from gauge config to Eigen 3x3 complex matrix arrays
 void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice) {
   int L1 = global_data->get_Lx();
@@ -129,6 +131,7 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
 ///////////////////////////////////////////////////////////////////////////////
 //helpers for smearing and gaugetrafos/////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
 std::array< int, 2 > get_dirs(int mu) {
   std::array<int,2> dirs;  
   if (mu == 0) {
@@ -204,6 +207,7 @@ static Eigen::Matrix3cd construct_random_su3() {
 ///////////////////////////////////////////////////////////////////////////////
 //Smearing methods/////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
 //Stout-Smearing
 void GaugeField::smearing_stout(const size_t t, const double rho, const size_t iter) {
 
@@ -413,6 +417,7 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
 ///////////////////////////////////////////////////////////////////////////////
 ///Displacement routines, returning one Eigenvector////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
 //Derivative, toogle symmetrization via sym
 Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
                                      const size_t t, const size_t dir, bool sym ) {
