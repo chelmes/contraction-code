@@ -2,6 +2,23 @@
 
 // Definition of a pointer on global data
 static GlobalData * const global_data = GlobalData::Instance();
+
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
+namespace {
+
+inline void read_eigenvectors_from_file(LapH::EigenVector& V, 
+                                        const int config_i, const int t) {
+  char name[200];
+  std::string filename = global_data->get_path_eigenvectors() + "/"
+      + global_data->get_name_eigenvectors();
+  sprintf(name, "%s.%04d.%03d", filename.c_str(), config_i, t);
+
+  V.read_eigen_vector(name, 0, 0);
+}
+
+}
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/

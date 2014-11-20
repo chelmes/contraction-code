@@ -25,18 +25,33 @@ LapH::CrossOperator::CrossOperator(const size_t number) : X(number) {
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
-void LapH::CrossOperator::construct(const BasicOperator& basic, const size_t nb,
-                                    const int t_in, const size_t particle_u, 
-                                    const size_t particle_d){
+void LapH::CrossOperator::construct(const BasicOperator& basic, 
+                                    const VdaggerV& vdaggerv, const size_t nb,
+                                    const int t_in, const size_t particle_no){
 
+  const int Lt = global_data->get_Lt();
   const size_t nb_mom = global_data->get_number_of_momenta();
   const std::vector<quark> quarks = global_data->get_quarks();
   const size_t nb_rnd = quarks[0].number_of_rnd_vec;
+  const size_t dilE = quarks[0].number_of_dilution_E;
+  const size_t dilT = quarks[0].number_of_dilution_T;
   // TODO: must be changed in GlobalData {
   std::vector<int> dirac_ind {5};
   const size_t nb_dir = dirac_ind.size();
   // TODO: }
 
+  const std::array<double, 4> bla = {{1., 1., -1., -1.}};
+  size_t tu, td, t2;
+  if(particle_no == 0){
+    tu = (t_in/dilT)*4*dilE;
+    td = (((t_in+1)%Lt)/dilT)*4*dilE;
+    t2 = t_in;
+  }
+  else {
+    tu = (((t_in+1)%Lt)/dilT)*4*dilE;
+    td = (t_in/dilT)*4*dilE;
+    t2 = (t_in+1)%Lt;
+  }
   for(size_t p_so = 0; p_so < nb_mom; p_so++){
   for(size_t p_si = 0; p_si < nb_mom; p_si++){
     for(size_t d_so = 0; d_so < nb_dir; d_so++){
@@ -47,11 +62,23 @@ void LapH::CrossOperator::construct(const BasicOperator& basic, const size_t nb,
       if(rnd2 != rnd1){
       for(size_t rnd3 = 0; rnd3 < nb_rnd; ++rnd3){
       if((rnd3 != rnd1) && (rnd3 != rnd2)){
+        for(size_t col = 0; col < 4; col++){
+          const size_t cc = tu + col*dilE;
+          for(size_t row = 0; row < 4; row++){
+            const size_t rr = td + row*dilE;
 
-        X[nb][p_so][p_si][d_so][d_si][rnd1][rnd2][rnd3] = 
-              basic.get_operator_g5(particle_d, t_in, d_si, p_si, rnd1) * 
-              basic.get_operator_charged(particle_u, t_in, d_so, p_so, rnd2, rnd3);
+            X[nb][p_so][p_si][d_so][d_si][rnd1][rnd2][rnd3]
+                                    .block(row*dilE, col*dilE, dilE, dilE) = 
 
+            bla[col] * 
+
+            basic.get_operator(particle_no, d_so, p_so, rnd1, rnd2)
+                      .block(rr, cc, dilE, dilE) *
+
+            vdaggerv.return_rvdaggervr(p_si, t2, d_si, rnd2, rnd3)
+                      .block(0, col*dilE, dilE, dilE);
+          }
+        }
       }}}}}// loops random vectors
     }}// loops dirac indices
   }}// loops momenta
