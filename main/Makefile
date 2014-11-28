@@ -18,7 +18,7 @@ all: rmxeq mkdep mkxeq
 
 # main programs and modules to be compiled
 
-MAIN = test_corr_io
+MAIN = test_corr_in
 
 GENERAL = GlobalData BasicOperator Perambulator io_utils config_utils RandomVector \
           ranlxs EigenVector VdaggerV Correlators CrossOperator
