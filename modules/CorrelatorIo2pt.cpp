@@ -30,6 +30,18 @@ static void set_tag(Tag& so_si, const pdg& op1, const pdg& op2){
     so_si.gam[i] = i+3;
   }
 }
+
+//check existence of a file
+static bool file_exist(const char* name) {
+  if (FILE *file = fopen(name, "r")) {
+    fclose(file);
+    return true;
+  } 
+  else {
+    return false;
+  }   
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 //Write 2pt correlator/////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -53,27 +65,35 @@ void write_2pt_lime(const char* filename, const pdg& op_so, const pdg& op_si,
   // Access flags for record and message: MB (Message Begin): 1 if true, ME
   // (Message End): 1 if true
   int MB_flag, ME_flag;
-  fp = fopen( filename, "a" );
-  w = limeCreateWriter( fp );
+  // if the file should not exist initialize it with config info as first message
+  if(!file_exist(filename)){
+    fp = fopen(filename, "w");
+    MB_flag = 1; ME_flag = 1;
+    w = LimeCreateWriter();
+    LimeRecordHeader* att; 
+  }
+   fp = fopen( filename, "a" );
+   w = limeCreateWriter( fp );
 
-  // Record for Tag as struct of 3 2dim integer-arrays
-  ME_flag = 0; MB_flag = 1;
-  sprintf(headername,"Tag of Correlator with p^2 = %d", p_sq);
-  id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
-  limeWriteRecordHeader( id, w );
-  limeDestroyHeader( id );
-  limeWriteRecordData( &so_si, &tag_bytes, w );
+   // Record for Tag as struct of 3 2dim integer-arrays
+   ME_flag = 0; MB_flag = 1;
+   sprintf(headername,"Tag of Correlator with p^2 = %d", p_sq);
+   id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
+   limeWriteRecordHeader( id, w );
+   limeDestroyHeader( id );
+   limeWriteRecordData( &so_si, &tag_bytes, w );
 
-  // Record for correlator belonging to tag
-  ME_flag = 1; MB_flag = 0; 
-  sprintf(headername,"Correlator with p^2 = %d", p_sq);
-  corr_hd = limeCreateHeader( MB_flag, ME_flag, headername, data_bytes );
-  limeWriteRecordHeader( corr_hd, w );
-  limeDestroyHeader( corr_hd );
-  limeWriteRecordData( corr.data(), &data_bytes, w ); 
-  limeDestroyWriter( w );
+   // Record for correlator belonging to tag
+   ME_flag = 1; MB_flag = 0; 
+   sprintf(headername,"Correlator with p^2 = %d", p_sq);
+   corr_hd = limeCreateHeader( MB_flag, ME_flag, headername, data_bytes );
+   limeWriteRecordHeader( corr_hd, w );
+   limeDestroyHeader( corr_hd );
+   limeWriteRecordData( corr.data(), &data_bytes, w ); 
+   limeDestroyWriter( w );
+  }
+  //generalized 
   fclose( fp );
-
 }
 ///////////////////////////////////////////////////////////////////////////////
 //Read 2pt correlator//////////////////////////////////////////////////////////
