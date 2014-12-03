@@ -24,7 +24,7 @@ struct Tag{
   int dis[2];
   int gam[2];
 };
-void write_2pt_lime(const char* filename, const Tag& tag
+void write_2pt_lime(const char* filename, Tag& tag,
                     std::vector<std::complex<double> >& corr);
 
 void read_2pt_lime(const char* filename, const Tag& tag,

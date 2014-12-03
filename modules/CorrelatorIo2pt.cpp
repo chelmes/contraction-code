@@ -33,7 +33,7 @@ static void set_tag(Tag& so_si, const pdg& op1, const pdg& op2){
 
 //check existence of a file
 static bool file_exist(const char* name) {
-  if (FILE *file = fopen(name, "r")) {
+  if (FILE* file = fopen(name, "r")) {
     fclose(file);
     return true;
   } 
@@ -45,20 +45,18 @@ static bool file_exist(const char* name) {
 ///////////////////////////////////////////////////////////////////////////////
 //Write 2pt correlator/////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void write_2pt_lime(const char* filename, const pdg& op_so, const pdg& op_si,
+void write_2pt_lime(const char* filename, Tag& tag ,
     std::vector<std::complex<double> >& corr){
 
   // first construct the tag from source and sink operator struct
-  Tag so_si;
-  set_tag(so_si, op_so, op_si);
-  int p_sq = square_comp(op_so.p, op_si.p);
+  int p_sq = 1;
   // setup what is needed for output to lime
   FILE* fp;
   LimeWriter* w;
   // Each message contains to records. Uneven records 
   LimeRecordHeader *id;
   LimeRecordHeader *corr_hd;
-  n_uint64_t tag_bytes = sizeof(so_si);
+  n_uint64_t tag_bytes = sizeof(tag);
   n_uint64_t data_bytes = corr.size()*2*sizeof(double);
   std::cout << data_bytes << std::endl;
   char headername[100];  
@@ -69,8 +67,18 @@ void write_2pt_lime(const char* filename, const pdg& op_so, const pdg& op_si,
   if(!file_exist(filename)){
     fp = fopen(filename, "w");
     MB_flag = 1; ME_flag = 1;
-    w = LimeCreateWriter();
-    LimeRecordHeader* att; 
+    w = limeCreateWriter(fp);
+    LimeRecordHeader* att;
+    char attname[100];
+    n_uint64_t att_bytes = sizeof(attname);
+    sprintf(attname, "calc_information");
+    att = limeCreateHeader(MB_flag, ME_flag, attname, att_bytes);
+    limeWriteRecordHeader(att,w);
+    limeDestroyHeader(att);
+    limeWriteRecordData(attname, &att_bytes,w);
+    limeDestroyWriter(w);
+
+    fclose(fp);
   }
    fp = fopen( filename, "a" );
    w = limeCreateWriter( fp );
@@ -81,7 +89,7 @@ void write_2pt_lime(const char* filename, const pdg& op_so, const pdg& op_si,
    id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
    limeWriteRecordHeader( id, w );
    limeDestroyHeader( id );
-   limeWriteRecordData( &so_si, &tag_bytes, w );
+   limeWriteRecordData( &tag, &tag_bytes, w );
 
    // Record for correlator belonging to tag
    ME_flag = 1; MB_flag = 0; 
@@ -91,9 +99,7 @@ void write_2pt_lime(const char* filename, const pdg& op_so, const pdg& op_si,
    limeDestroyHeader( corr_hd );
    limeWriteRecordData( corr.data(), &data_bytes, w ); 
    limeDestroyWriter( w );
-  }
-  //generalized 
-  fclose( fp );
+   fclose(fp);
 }
 ///////////////////////////////////////////////////////////////////////////////
 //Read 2pt correlator//////////////////////////////////////////////////////////
