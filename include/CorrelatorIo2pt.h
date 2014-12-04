@@ -1,6 +1,7 @@
 #ifndef CORRELATOR_IO_2PT_H_
 #define CORRELATOR_IO_2PT_H_
 
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cstdlib>

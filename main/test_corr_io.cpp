@@ -51,7 +51,11 @@ int main(int ac, char* av[]) {
   // Fill correlators with random numbers
   for (auto& el : correlators) fill_corr_rand(el, &el-&correlators[0]);
   write_2pt_lime("final_write", run_id, attributes, correlators);
-  for (auto& el : correlators.at(26)) std::cout << el << std::endl;
+  for (auto& el : correlators.at(0)) std::cout << el << std::endl;
+  boost::crc_32_type chk_agent;
+  size_t bytes = (correlators[0]).size();
+  chk_agent.process_bytes(correlators[0].data(), bytes); 
+  std::cout << "Checksum for Correlator 26 is:" << chk_agent() << std::endl;
   return 0;
 }
 

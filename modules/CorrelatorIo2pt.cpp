@@ -41,11 +41,10 @@ static bool file_exist(const char* name) {
     return false;
   }   
 }
-
-static boost::uint64_t checksum(const std::vector<vec>& dat){
-  size_t len = dat.size()*sizeof(vec);
-  boost::crc_ccitt_type chksum_agent;
-  chksum_agent.process_bytes(&dat[0], len);
+template <typename MyContainer> 
+static boost::uint64_t checksum(const MyContainer& dat, size_t bytes){
+  boost::crc_32_type chksum_agent;
+  chksum_agent.process_bytes(&dat[0], bytes);
   return chksum_agent.checksum();
 }
 
@@ -60,11 +59,9 @@ static void write_1st_msg(const char* filename, GlobalDat& dat,
   int MB_flag = 1;
   int ME_flag = 0;
   LimeRecordHeader* chk;
-  char hdr[] = {"Global Checksum"};
-  n_uint64_t hdr_bytes = sizeof(hdr);
   n_uint64_t chk_bytes = sizeof(chksum);
-  chk = limeCreateHeader(MB_flag, ME_flag, hdr, hdr_bytes);
-  limeWriteRecordHeader(chk,w);
+  chk = limeCreateHeader(MB_flag, ME_flag, "Global Checksum", chk_bytes);
+  limeWriteRecordHeader(chk, w);
   limeDestroyHeader(chk);
   limeWriteRecordData(&chksum, &chk_bytes, w);
   
@@ -72,10 +69,8 @@ static void write_1st_msg(const char* filename, GlobalDat& dat,
   MB_flag = 0; ME_flag = 1;
   
   LimeRecordHeader* run_id;
-  char run_inf[] = {"Runinfo"};
-  n_uint64_t run_hdr_bytes = sizeof(run_inf);
   n_uint64_t run_id_bytes = sizeof(dat);
-  run_id = limeCreateHeader(MB_flag, ME_flag, run_inf, run_hdr_bytes);
+  run_id = limeCreateHeader(MB_flag, ME_flag, "Runinfo", run_id_bytes);
   limeWriteRecordHeader(run_id,w);
   limeDestroyHeader(run_id);
   limeWriteRecordData(&dat, &run_id_bytes, w);
@@ -86,17 +81,29 @@ static void write_1st_msg(const char* filename, GlobalDat& dat,
   static void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>& tags,
               LimeWriter* w){
     // Each message contains two records. Uneven records 
-    LimeRecordHeader *id;
-    LimeRecordHeader *corr_hd;
+    LimeRecordHeader* corr_chk;
+    LimeRecordHeader* id;
+    LimeRecordHeader* corr_hd;
+
+    boost::uint64_t corr_chksum;
     n_uint64_t tag_bytes = sizeof(tags[0]);
-    n_uint64_t data_bytes = (corr[0]).size()*2*sizeof(double);
+    n_uint64_t data_bytes = (corr[0]).size();
     char headername[100];  
     // Access flags for record and message: MB (Message Begin): 1 if true, ME
     // (Message End): 1 if true
     int MB_flag, ME_flag;
     for(size_t el = 0; el < corr.size(); ++el){
-      // Record for Tag as struct of 3 2dim integer-arrays
+      // Record for checksum
+      corr_chksum = checksum <vec> (corr[el], data_bytes);
+      n_uint64_t chk_bytes = sizeof(corr_chksum);
       ME_flag = 0; MB_flag = 1;
+      corr_chk = limeCreateHeader(MB_flag, ME_flag,"Correlator checksum", chk_bytes);
+      limeWriteRecordHeader( corr_chk, w );
+      limeDestroyHeader( corr_chk );
+      limeWriteRecordData( &corr_chksum, &chk_bytes, w );
+
+      // Record for Tag as struct of 3 2dim integer-arrays
+      ME_flag = 0; MB_flag = 0;
       sprintf(headername,"Tag of Correlator with p^2 = %zd", el);
       id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
       limeWriteRecordHeader( id, w );
@@ -120,10 +127,12 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
   // if the file should not exist initialize it with config info as first message
   if(!file_exist(filename)){
     // calculate checksum of all correlators
-    boost::uint64_t global_chksum = checksum(corr);
+    size_t glob_bytes = corr.size() * (corr[0]).size();
+    boost::uint64_t global_chksum = checksum <std::vector<vec> > (corr,
+                                                                  glob_bytes);
+    std::cout << "Global Checksum is: " << global_chksum << std::endl;
     write_1st_msg(filename, dat, global_chksum);
   }
-
   // setup what is needed for output to lime
   FILE* fp;
   LimeWriter* w;
