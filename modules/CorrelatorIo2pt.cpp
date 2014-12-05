@@ -4,9 +4,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 //Endianess////////////////////////////////////////////////////////////////////
-
-// Calculate momentum squared needed in header
-// Check endianess
+// test endianess
 static int big_endian () {
 	union {
 		int l;
@@ -17,30 +15,70 @@ static int big_endian () {
 	return (u.c[sizeof(int) - 1] == 1);
 }
 
-// Swap Byte order for changing endianess, if needed
-static void byte_swap_assign (void * out_ptr, void * in_ptr, int nmemb) {
-	int j;
-	char * char_in_ptr, *char_out_ptr;
-	double * double_in_ptr, *double_out_ptr;
+// swapping endianess ----------------------------------------------------------
 
-	double_in_ptr = (double *) in_ptr;
-	double_out_ptr = (double *) out_ptr;
-	for(j = 0; j < nmemb; j++){
-		char_in_ptr = (char *) double_in_ptr;
-		char_out_ptr = (char *) double_out_ptr;
-
-		char_out_ptr[7] = char_in_ptr[0];
-		char_out_ptr[6] = char_in_ptr[1];
-		char_out_ptr[5] = char_in_ptr[2];
-		char_out_ptr[4] = char_in_ptr[3];
-		char_out_ptr[3] = char_in_ptr[4];
-		char_out_ptr[2] = char_in_ptr[5];
-		char_out_ptr[1] = char_in_ptr[6];
-		char_out_ptr[0] = char_in_ptr[7];
-		double_in_ptr++;
-		double_out_ptr++;
-	}
+template <typename T> T swap_endian(T u) {
+  union {
+    T u;
+    unsigned char u8[sizeof(T)];
+  } source, dest;
+  source.u = u;
+  for (size_t k = 0; k < sizeof(T); k++)
+    dest.u8[k] = source.u8[sizeof(T) - k - 1]; 
+  return dest.u;
 }
+
+//
+inline std::complex<double>  swap_complex(std::complex<double> val){
+
+  return std::complex<double>(swap_endian<double>(std::real(val)),
+                              swap_endian<double>(std::imag(val)));
+}
+
+// swap endianess of one correlation function
+static std::vector<cmplx> swap_single_corr(const std::vector<cmplx>& corr){
+  size_t ext = corr.size();
+  // Temporary vector same size as input
+  std::vector<cmplx> le(ext);
+  // Swap endianness for every entry in corr
+  for(size_t val = 0; val < ext; ++val) {
+    le[val] = swap_complex(corr[val]);
+  }
+  return le;
+}
+
+// use for all correlation functions
+inline void swap_correlators(std::vector<vec>& corr){
+  for (auto& func : corr) func = swap_single_corr(func);
+}
+
+// swap endianess of one tag
+static Tag swap_single_tag(const Tag& tag){
+  Tag le_tag;
+  for(size_t pos = 0; pos < 2; ++pos ){
+    le_tag.mom[pos] = swap_endian<int>(tag.mom[pos]);
+    le_tag.dis[pos] = swap_endian<int>(tag.dis[pos]);
+    le_tag.gam[pos] = swap_endian<int>(tag.gam[pos]);
+  }
+  return le_tag;
+}
+
+// now for the whole vector
+inline void swap_tag_vector(std::vector<Tag>& tags){
+  for (auto& label : tags) label = swap_single_tag(label);
+}
+
+// swap endianess of global data
+
+static GlobalDat swap_glob_dat(const GlobalDat& run_info){
+  GlobalDat le_glob;
+  for (auto seed = 0; seed < run_info.rnd_seeds.size(); ++seed)
+    le_glob.rnd_seeds.push_back( swap_endian<size_t>(run_info.rnd_seeds[seed]) );
+  le_glob.nb_rnd_vecs = swap_endian<size_t>(run_info.nb_rnd_vecs);
+  le_glob.nb_perambs = swap_endian<size_t>(run_info.nb_perambs);
+  return le_glob;
+}
+
 //Tag handling/////////////////////////////////////////////////////////////////
 
 // Calculate p^2
@@ -120,22 +158,27 @@ static void write_1st_msg(const char* filename, GlobalDat& dat,
 } 
 
 static void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>& tags,
-              LimeWriter* w){
-  // Each message contains two records. Uneven records 
+              LimeWriter* w, bool be){
+  // Each message contains three records:
+  // 1st: Checksum for the Correlator
+  // 2nd: Tag for the Correlator
+  // 3rd: Correlationfunction itself
   LimeRecordHeader* corr_chk;
   LimeRecordHeader* id;
   LimeRecordHeader* corr_hd;
 
   boost::uint64_t corr_chksum;
   n_uint64_t tag_bytes = sizeof(tags[0]);
-  n_uint64_t data_bytes = (corr[0]).size();
+  n_uint64_t data_bytes = (corr[0]).size()*2*sizeof(double);
   char headername[100];  
   // Access flags for record and message: MB (Message Begin): 1 if true, ME
   // (Message End): 1 if true
   int MB_flag, ME_flag;
   for(size_t el = 0; el < corr.size(); ++el){
-    // Record for checksum
-    corr_chksum = checksum <vec> (corr[el], data_bytes);
+
+    // 1st record for checksum
+    corr_chksum = checksum <vec> (corr[el], corr[el].size());
+    if(be) corr_chksum = swap_endian<boost::uint64_t>(corr_chksum);
     n_uint64_t chk_bytes = sizeof(corr_chksum);
     ME_flag = 0; MB_flag = 1;
     corr_chk = limeCreateHeader(MB_flag, ME_flag,"Correlator checksum", chk_bytes);
@@ -143,7 +186,7 @@ static void append_msgs(const char* filename, std::vector<vec>& corr, std::vecto
     limeDestroyHeader( corr_chk );
     limeWriteRecordData( &corr_chksum, &chk_bytes, w );
 
-    // Record for Tag as struct of 3 2dim integer-arrays
+    // 2nd record for Tag as struct of 3 2dim integer-arrays
     ME_flag = 0; MB_flag = 0;
     sprintf(headername,"Tag of Correlator with p^2 = %zd", el);
     id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
@@ -151,13 +194,13 @@ static void append_msgs(const char* filename, std::vector<vec>& corr, std::vecto
     limeDestroyHeader( id );
     limeWriteRecordData( &tags[el], &tag_bytes, w );
 
-    // Record for correlator belonging to tag
+    // 3rd record for correlator belonging to tag
     ME_flag = 1; MB_flag = 0; 
     sprintf(headername,"Correlator with p^2 = %zd", el);
     corr_hd = limeCreateHeader( MB_flag, ME_flag, headername, data_bytes );
     limeWriteRecordHeader( corr_hd, w );
     limeDestroyHeader( corr_hd );
-    limeWriteRecordData( &corr[el], &data_bytes, w ); 
+    limeWriteRecordData( corr[el].data(), &data_bytes, w ); 
   }
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -165,6 +208,12 @@ static void append_msgs(const char* filename, std::vector<vec>& corr, std::vecto
 ///////////////////////////////////////////////////////////////////////////////
 void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags,
                     std::vector<vec>& corr){
+  bool be = big_endian();
+  if (be){
+    swap_correlators(corr);
+    swap_tag_vector(tags);
+    dat = swap_glob_dat(dat);
+  }
   // if the file should not exist initialize it with config info as first message
   if(!file_exist(filename)){
     // calculate checksum of all correlators
@@ -172,6 +221,7 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
     boost::uint64_t global_chksum = checksum <std::vector<vec> > (corr,
                                                                   glob_bytes);
     std::cout << "Global Checksum is: " << global_chksum << std::endl;
+    if(be) global_chksum = swap_endian<boost::uint64_t>(global_chksum);
     write_1st_msg(filename, dat, global_chksum);
   }
   // setup what is needed for output to lime
@@ -180,7 +230,7 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
   fp = fopen( filename, "a" );
   w = limeCreateWriter( fp );
   // writing the correlators to the end
-  append_msgs(filename, corr, tags, w);
+  append_msgs(filename, corr, tags, w, be);
   limeDestroyWriter( w );
   fclose(fp);
 }

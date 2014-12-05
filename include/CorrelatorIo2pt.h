@@ -35,6 +35,8 @@ struct GlobalDat {
   size_t nb_perambs;
 };
 
+void swap_correlators(std::vector<vec>& correlators);
+void swap_tag_vector(std::vector<Tag>& tags);
 void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags,
                     std::vector<vec>& corr);
 
