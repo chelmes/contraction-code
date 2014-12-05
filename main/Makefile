@@ -21,7 +21,7 @@ all: rmxeq mkdep mkxeq
 MAIN = test_corr_io
 
 GENERAL = GlobalData BasicOperator Perambulator io_utils config_utils RandomVector \
-          ranlxs EigenVector VdaggerV CorrelatorIo2pt Correlators CrossOperator
+          ranlxs EigenVector VdaggerV CorrelatorIo2pt Correlators CrossOperator IoHelpers
 MODULES = $(GENERAL)
 
 # search path for modules
