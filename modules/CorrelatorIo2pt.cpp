@@ -3,7 +3,47 @@
 //Helper Routines//////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+//Endianess////////////////////////////////////////////////////////////////////
+
 // Calculate momentum squared needed in header
+// Check endianess
+static int big_endian () {
+	union {
+		int l;
+		char c[sizeof(int)];
+	} u;
+
+	u.l = 1;
+	return (u.c[sizeof(int) - 1] == 1);
+}
+
+// Swap Byte order for changing endianess, if needed
+static void byte_swap_assign (void * out_ptr, void * in_ptr, int nmemb) {
+	int j;
+	char * char_in_ptr, *char_out_ptr;
+	double * double_in_ptr, *double_out_ptr;
+
+	double_in_ptr = (double *) in_ptr;
+	double_out_ptr = (double *) out_ptr;
+	for(j = 0; j < nmemb; j++){
+		char_in_ptr = (char *) double_in_ptr;
+		char_out_ptr = (char *) double_out_ptr;
+
+		char_out_ptr[7] = char_in_ptr[0];
+		char_out_ptr[6] = char_in_ptr[1];
+		char_out_ptr[5] = char_in_ptr[2];
+		char_out_ptr[4] = char_in_ptr[3];
+		char_out_ptr[3] = char_in_ptr[4];
+		char_out_ptr[2] = char_in_ptr[5];
+		char_out_ptr[1] = char_in_ptr[6];
+		char_out_ptr[0] = char_in_ptr[7];
+		double_in_ptr++;
+		double_out_ptr++;
+	}
+}
+//Tag handling/////////////////////////////////////////////////////////////////
+
+// Calculate p^2
 static int square_comp(const std::array<int, 3>& p1,
                        const std::array<int, 3>& p2){
   int square = 0;
@@ -31,6 +71,7 @@ static void set_tag(Tag& so_si, const pdg& op1, const pdg& op2){
   }
 }
 
+//File handling////////////////////////////////////////////////////////////////
 //check existence of a file
 static bool file_exist(const char* name) {
   if (FILE* file = fopen(name, "r")) {
@@ -78,47 +119,47 @@ static void write_1st_msg(const char* filename, GlobalDat& dat,
   fclose(fp);
 } 
 
-  static void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>& tags,
+static void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>& tags,
               LimeWriter* w){
-    // Each message contains two records. Uneven records 
-    LimeRecordHeader* corr_chk;
-    LimeRecordHeader* id;
-    LimeRecordHeader* corr_hd;
+  // Each message contains two records. Uneven records 
+  LimeRecordHeader* corr_chk;
+  LimeRecordHeader* id;
+  LimeRecordHeader* corr_hd;
 
-    boost::uint64_t corr_chksum;
-    n_uint64_t tag_bytes = sizeof(tags[0]);
-    n_uint64_t data_bytes = (corr[0]).size();
-    char headername[100];  
-    // Access flags for record and message: MB (Message Begin): 1 if true, ME
-    // (Message End): 1 if true
-    int MB_flag, ME_flag;
-    for(size_t el = 0; el < corr.size(); ++el){
-      // Record for checksum
-      corr_chksum = checksum <vec> (corr[el], data_bytes);
-      n_uint64_t chk_bytes = sizeof(corr_chksum);
-      ME_flag = 0; MB_flag = 1;
-      corr_chk = limeCreateHeader(MB_flag, ME_flag,"Correlator checksum", chk_bytes);
-      limeWriteRecordHeader( corr_chk, w );
-      limeDestroyHeader( corr_chk );
-      limeWriteRecordData( &corr_chksum, &chk_bytes, w );
+  boost::uint64_t corr_chksum;
+  n_uint64_t tag_bytes = sizeof(tags[0]);
+  n_uint64_t data_bytes = (corr[0]).size();
+  char headername[100];  
+  // Access flags for record and message: MB (Message Begin): 1 if true, ME
+  // (Message End): 1 if true
+  int MB_flag, ME_flag;
+  for(size_t el = 0; el < corr.size(); ++el){
+    // Record for checksum
+    corr_chksum = checksum <vec> (corr[el], data_bytes);
+    n_uint64_t chk_bytes = sizeof(corr_chksum);
+    ME_flag = 0; MB_flag = 1;
+    corr_chk = limeCreateHeader(MB_flag, ME_flag,"Correlator checksum", chk_bytes);
+    limeWriteRecordHeader( corr_chk, w );
+    limeDestroyHeader( corr_chk );
+    limeWriteRecordData( &corr_chksum, &chk_bytes, w );
 
-      // Record for Tag as struct of 3 2dim integer-arrays
-      ME_flag = 0; MB_flag = 0;
-      sprintf(headername,"Tag of Correlator with p^2 = %zd", el);
-      id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
-      limeWriteRecordHeader( id, w );
-      limeDestroyHeader( id );
-      limeWriteRecordData( &tags[el], &tag_bytes, w );
+    // Record for Tag as struct of 3 2dim integer-arrays
+    ME_flag = 0; MB_flag = 0;
+    sprintf(headername,"Tag of Correlator with p^2 = %zd", el);
+    id = limeCreateHeader( MB_flag, ME_flag, headername , tag_bytes );
+    limeWriteRecordHeader( id, w );
+    limeDestroyHeader( id );
+    limeWriteRecordData( &tags[el], &tag_bytes, w );
 
-      // Record for correlator belonging to tag
-      ME_flag = 1; MB_flag = 0; 
-      sprintf(headername,"Correlator with p^2 = %zd", el);
-      corr_hd = limeCreateHeader( MB_flag, ME_flag, headername, data_bytes );
-      limeWriteRecordHeader( corr_hd, w );
-      limeDestroyHeader( corr_hd );
-      limeWriteRecordData( &corr[el], &data_bytes, w ); 
-    }
+    // Record for correlator belonging to tag
+    ME_flag = 1; MB_flag = 0; 
+    sprintf(headername,"Correlator with p^2 = %zd", el);
+    corr_hd = limeCreateHeader( MB_flag, ME_flag, headername, data_bytes );
+    limeWriteRecordHeader( corr_hd, w );
+    limeDestroyHeader( corr_hd );
+    limeWriteRecordData( &corr[el], &data_bytes, w ); 
   }
+}
 ///////////////////////////////////////////////////////////////////////////////
 //Write 2pt correlator/////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
