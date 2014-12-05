@@ -35,6 +35,11 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
 ///////////////////////////////////////////////////////////////////////////////
 
 
+// IDEA: First read in everything and compare checksums, if not correct give
+// warning and exit
+// afterwards look for correlator with tag.
+
+
 void read_2pt_lime(const char* filename, const Tag& tag,
     std::vector<std::complex<double> >& corr){
 
@@ -61,7 +66,7 @@ void read_2pt_lime(const char* filename, const Tag& tag,
     ME_flag = limeReaderMEFlag(r);
     std::cout << MB_flag << " " << ME_flag << std::endl;
     // get Metainfo of record in read tag
-    if(MB_flag == 1 && ME_flag == 0){
+    if(MB_flag == 0 && ME_flag == 0){
       act_status = limeReaderReadData(&read_tag, &tag_bytes, r);
       // compare read_tag with tag
       if(compare_tags(read_tag, tag)){
