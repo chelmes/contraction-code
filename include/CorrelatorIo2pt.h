@@ -20,8 +20,8 @@
 void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags,
                     std::vector<vec>& corr);
 
-void read_2pt_lime(const char* filename, const Tag& tag,
-                   std::vector<std::complex<double> >& corr);
+void read_2pt_lime(const char* filename, std::vector<Tag>& tag,
+                   std::vector<vec>& corr);
 
 
 #endif //IO_2PT_H_

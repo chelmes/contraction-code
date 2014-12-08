@@ -50,14 +50,23 @@ int main(int ac, char* av[]) {
   std::vector<Tag> attributes (100);
   // Fill correlators with random numbers
   for (auto& el : correlators) fill_corr_rand(el, &el-&correlators[0]);
-  write_2pt_lime("final_write", run_id, attributes, correlators);
+  //write_2pt_lime("final_write", run_id, attributes, correlators);
   //swap_correlators(correlators);
   //swap_correlators(correlators);
   for (auto& el : correlators.at(0)) std::cout << el << std::endl;
   boost::crc_32_type chk_agent;
   size_t bytes = (correlators[0]).size();
   chk_agent.process_bytes(correlators[0].data(), bytes); 
-  std::cout << "Checksum for Correlator 26 is:" << chk_agent() << std::endl;
+  std::cout << "Checksum for Correlator 1 is:" << chk_agent() << std::endl;
+
+  std::vector<Tag> tags_in(100);
+  std::vector<vec> correlators_in(100);
+  for (auto& el : correlators_in) el.resize(96);
+  std::cout << "read_in from file: final_write " << std::endl;
+  read_2pt_lime("final_write", tags_in, correlators_in);
+  for (auto& el : correlators_in.at(0)) std::cout << el << std::endl;
+ 
+
   return 0;
 }
 

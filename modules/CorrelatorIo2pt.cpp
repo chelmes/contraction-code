@@ -40,30 +40,32 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
 // afterwards look for correlator with tag.
 
 void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec>& correlators){
+  bool bigend = big_endian();
   if(tags.size() == correlators.size()){
-    if(FILE* fp = fopen(filename, r)){
+    if(FILE* fp = fopen(filename, "r")){
       boost::uint64_t global_check;
-      std::vector<boost::uint64_t>checksums(tags.size(),0);
+      std::vector<boost::uint64_t>checksums(tags.size());
       int MB_flag = 0; int ME_flag = 0;
       int file_status = 0;
       int act_status = 0;
-      limeReader r = limeCreateReader(fp);
-      nu_int64_t check_bytes = sizeof(boost::uint64_t);
+      LimeReader* r = limeCreateReader(fp);
+      n_uint64_t check_bytes = sizeof(boost::uint64_t);
       n_uint64_t tag_bytes = sizeof(Tag);
       n_uint64_t data_bytes = correlators[0].size()*2*sizeof(double);
       // From first message read global checksum
       MB_flag = limeReaderMBFlag(r);
       ME_flag = limeReaderMEFlag(r);
       if(MB_flag == 1 && ME_flag == 0){
-        act_status = limeReaderReadData(&global_check, check_bytes, r);
+        act_status = limeReaderReadData(&global_check, &check_bytes, r);
+        if (bigend) global_check = swap_endian<boost::uint64_t>(global_check);
       }
       file_status = limeReaderNextRecord(r);
       // TODO: think about read in runinfo
       file_status = limeReaderNextRecord(r);
       // loop over all remaining messages
-      // counting correlators
-      int cnt = 0;
-      while (file_status != LIME_EOF){
+     int cnt = 0;
+     do {
+      std::cout << "message: " << cnt/3 << std::endl;
       file_status = limeReaderNextRecord(r);
       MB_flag = limeReaderMBFlag(r);
       ME_flag = limeReaderMEFlag(r);
@@ -71,29 +73,39 @@ void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec
       // read correlator checksum
       if(MB_flag == 1 && ME_flag == 0){
         boost::uint64_t check = 0;
-        act_status = limeReaderReadData(&check, check_bytes, r);
-        checksum.pushback(check);
+        act_status = limeReaderReadData(&check, &check_bytes, r);
+        if (bigend) check = swap_endian<boost::uint64_t>(check);
+        checksums.at(cnt/3) = check;
+        std::cout << check << std::endl;
       }
       // read correlator tag
       else if(MB_flag == 0 && ME_flag == 0){
         Tag read_tag;
         act_status = limeReaderReadData(&read_tag, &tag_bytes, r);
-        tags.pushback(read_tag);
+        if (bigend) read_tag = swap_single_tag(read_tag);
+        tags.at(cnt/3) = read_tag;
       }
       // read correlator data
       else if(MB_flag == 0 && ME_flag == 1){
-        act_status = limeReaderReadData(&correlators[i], &data_bytes, r);
-        correlators.psuh_back(corr);
+        vec corr;
+        corr.resize(96);
+        std::cout << "initialized tmeporal correlator" << std::endl;
+        act_status = limeReaderReadData(corr.data(), &data_bytes, r);
+        std::cout << "read_in tmeporal correlator" << std::endl;
+        std::cout << corr.size() << std::endl;
+        if (bigend) corr = swap_single_corr(corr);
+        correlators.at(cnt/3) = corr;
       }
       ++cnt;
-    }
+      } while (MB_flag != -1 || ME_flag != -1);
       // Check file integrity
       file_check(global_check, checksums, correlators);
+    }
     else std::cout << "File does not exist!" << std::endl;
   }
   else std::cout << "#elements for tags and correlators not equal" << std::endl;
 }
-}
+
 void get_2pt_lime(const char* filename, const Tag& tag,
     std::vector<std::complex<double> >& corr){
 

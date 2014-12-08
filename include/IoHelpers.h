@@ -134,5 +134,8 @@ inline void swap_correlators(std::vector<vec>& corr){
 inline void swap_tag_vector(std::vector<Tag>& tags){
   for (auto& label : tags) label = swap_single_tag(label);
 }
-
+// Check checksums
+void file_check(boost::uint64_t glob_check,
+                std::vector<boost::uint64_t>& checksums,
+                std::vector<vec>& correlators);
 #endif // IO_HELPERS_H_
