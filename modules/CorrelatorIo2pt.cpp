@@ -39,42 +39,61 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
 // warning and exit
 // afterwards look for correlator with tag.
 
-void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec> correlators){
+void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec>& correlators){
   if(tags.size() == correlators.size()){
     if(FILE* fp = fopen(filename, r)){
+      boost::uint64_t global_check;
       std::vector<boost::uint64_t>checksums(tags.size(),0);
       int MB_flag = 0; int ME_flag = 0;
       int file_status = 0;
       int act_status = 0;
       limeReader r = limeCreateReader(fp);
+      nu_int64_t check_bytes = sizeof(boost::uint64_t);
       n_uint64_t tag_bytes = sizeof(Tag);
       n_uint64_t data_bytes = correlators[0].size()*2*sizeof(double);
+      // From first message read global checksum
+      MB_flag = limeReaderMBFlag(r);
+      ME_flag = limeReaderMEFlag(r);
+      if(MB_flag == 1 && ME_flag == 0){
+        act_status = limeReaderReadData(&global_check, check_bytes, r);
+      }
+      file_status = limeReaderNextRecord(r);
+      // TODO: think about read in runinfo
+      file_status = limeReaderNextRecord(r);
+      // loop over all remaining messages
+      // counting correlators
+      int cnt = 0;
       while (file_status != LIME_EOF){
-      // read tag
       file_status = limeReaderNextRecord(r);
       MB_flag = limeReaderMBFlag(r);
       ME_flag = limeReaderMEFlag(r);
       std::cout << MB_flag << " " << ME_flag << std::endl;
-      // get Metainfo of record in read tag
-      if(MB_flag == 0 && ME_flag == 0){
+      // read correlator checksum
+      if(MB_flag == 1 && ME_flag == 0){
+        boost::uint64_t check = 0;
+        act_status = limeReaderReadData(&check, check_bytes, r);
+        checksum.pushback(check);
+      }
+      // read correlator tag
+      else if(MB_flag == 0 && ME_flag == 0){
+        Tag read_tag;
         act_status = limeReaderReadData(&read_tag, &tag_bytes, r);
-        // compare read_tag with tag
-        if(compare_tags(read_tag, tag)){
-          // if it is the same write next record to correlation function
-          file_status = limeReaderNextRecord(r);
-          MB_flag = limeReaderMBFlag(r);
-          ME_flag = limeReaderMEFlag(r);
-          std::cout << data_bytes << std::endl;
-          act_status = limeReaderReadData(corr.data(), &data_bytes, r);
-        }
+        tags.pushback(read_tag);
       }
+      // read correlator data
+      else if(MB_flag == 0 && ME_flag == 1){
+        act_status = limeReaderReadData(&correlators[i], &data_bytes, r);
+        correlators.psuh_back(corr);
       }
+      ++cnt;
     }
+      // Check file integrity
+      file_check(global_check, checksums, correlators);
     else std::cout << "File does not exist!" << std::endl;
   }
   else std::cout << "#elements for tags and correlators not equal" << std::endl;
 }
-
+}
 void get_2pt_lime(const char* filename, const Tag& tag,
     std::vector<std::complex<double> >& corr){
 
