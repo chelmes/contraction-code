@@ -118,12 +118,15 @@ void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>&
 }
 
 // Check checksums
-void file_check(boost::uint64_t glob_check,
-                std::vector<boost::uint64_t>& checksums,
-                std::vector<vec>& correlators){
-  boost::uint64_t tmp = 0;
-  tmp = checksum<std::vector<vec> > (correlators, correlators.size());
-  if (big_endian()) swap_endian <boost::uint64_t> (tmp);
+void file_check(const size_t glob_check,
+                const std::vector<boost::uint64_t>& checksums,
+                const std::vector<cmplx>& correlators){
+  size_t tmp = 0;
+  size_t bytecount = correlators.size()*sizeof(double);
+  
+  tmp = checksum<std::vector<cmplx> > (correlators, bytecount);
+  if (big_endian()) swap_endian <size_t> (tmp);
+  std::cout << bytecount << std::endl;
   if (tmp == glob_check) {
     std::cout << " File Checksum matches data. "<< std::endl;
   }

@@ -12,19 +12,29 @@ void write_2pt_lime(const char* filename, GlobalDat& dat, std::vector<Tag>& tags
   }
   // if the file should not exist initialize it with config info as first message
   if(!file_exist(filename)){
+
     // calculate checksum of all correlators
     size_t glob_bytes = corr.size() * (corr[0]).size();
-    boost::uint64_t global_chksum = checksum <std::vector<vec> > (corr,
-                                                                  glob_bytes);
+
+    //concatenate all correlation functions in one vector
+    std::vector<cmplx> collect(glob_bytes);
+    size_t length = glob_bytes*2*sizeof(double);
+    std::cout << "lngth is: " << length << std::endl;
+    for(auto& c : corr)
+      for (auto& el : c) collect.push_back(el);
+    size_t global_chksum = checksum <std::vector<cmplx> > (collect,
+                                                                  length);
     std::cout << "Global Checksum is: " << global_chksum << std::endl;
-    if(be) global_chksum = swap_endian<boost::uint64_t>(global_chksum);
+    if(be) global_chksum = swap_endian<size_t>(global_chksum);
     write_1st_msg(filename, dat, global_chksum);
   }
+
   // setup what is needed for output to lime
   FILE* fp;
   LimeWriter* w;
   fp = fopen( filename, "a" );
   w = limeCreateWriter( fp );
+
   // writing the correlators to the end
   append_msgs(filename, corr, tags, w, be);
   limeDestroyWriter( w );
@@ -44,12 +54,12 @@ void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec
   if(tags.size() == correlators.size()){
     if(FILE* fp = fopen(filename, "r")){
       boost::uint64_t global_check;
-      std::vector<boost::uint64_t>checksums(tags.size());
+      std::vector<size_t>checksums(tags.size());
       int MB_flag = 0; int ME_flag = 0;
       int file_status = 0;
       int act_status = 0;
       LimeReader* r = limeCreateReader(fp);
-      n_uint64_t check_bytes = sizeof(boost::uint64_t);
+      n_uint64_t check_bytes = sizeof(size_t);
       n_uint64_t tag_bytes = sizeof(Tag);
       n_uint64_t data_bytes = correlators[0].size()*2*sizeof(double);
       // From first message read global checksum
@@ -57,7 +67,7 @@ void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec
       ME_flag = limeReaderMEFlag(r);
       if(MB_flag == 1 && ME_flag == 0){
         act_status = limeReaderReadData(&global_check, &check_bytes, r);
-        if (bigend) global_check = swap_endian<boost::uint64_t>(global_check);
+        if (bigend) global_check = swap_endian<size_t>(global_check);
       }
       file_status = limeReaderNextRecord(r);
       // TODO: think about read in runinfo
@@ -65,18 +75,18 @@ void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec
       // loop over all remaining messages
      int cnt = 0;
      do {
-      std::cout << "message: " << cnt/3 << std::endl;
+      //std::cout << "message: " << cnt/3 << std::endl;
       file_status = limeReaderNextRecord(r);
       MB_flag = limeReaderMBFlag(r);
       ME_flag = limeReaderMEFlag(r);
-      std::cout << MB_flag << " " << ME_flag << std::endl;
+      //std::cout << MB_flag << " " << ME_flag << std::endl;
       // read correlator checksum
       if(MB_flag == 1 && ME_flag == 0){
         boost::uint64_t check = 0;
         act_status = limeReaderReadData(&check, &check_bytes, r);
-        if (bigend) check = swap_endian<boost::uint64_t>(check);
+        if (bigend) check = swap_endian<size_t>(check);
         checksums.at(cnt/3) = check;
-        std::cout << check << std::endl;
+        //std::cout << check << std::endl;
       }
       // read correlator tag
       else if(MB_flag == 0 && ME_flag == 0){
@@ -89,17 +99,23 @@ void read_2pt_lime(const char* filename, std::vector<Tag>& tags, std::vector<vec
       else if(MB_flag == 0 && ME_flag == 1){
         vec corr;
         corr.resize(96);
-        std::cout << "initialized tmeporal correlator" << std::endl;
+        //std::cout << "initialized tmeporal correlator" << std::endl;
         act_status = limeReaderReadData(corr.data(), &data_bytes, r);
-        std::cout << "read_in tmeporal correlator" << std::endl;
-        std::cout << corr.size() << std::endl;
+        //std::cout << "read_in tmeporal correlator" << std::endl;
+        //std::cout << corr.size() << std::endl;
         if (bigend) corr = swap_single_corr(corr);
         correlators.at(cnt/3) = corr;
       }
       ++cnt;
       } while (MB_flag != -1 || ME_flag != -1);
       // Check file integrity
-      file_check(global_check, checksums, correlators);
+     //std::cout << correlators.size();
+     size_t glob_bytes = correlators.size()*correlators[0].size();
+    //concatenate all correlation functions in one vector
+    std::vector<cmplx> collect(glob_bytes);
+    for(auto& c : correlators)
+      for (auto& el : c) collect.push_back(el);
+      file_check(global_check, checksums, collect);
     }
     else std::cout << "File does not exist!" << std::endl;
   }
