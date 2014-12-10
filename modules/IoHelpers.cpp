@@ -40,7 +40,7 @@
 
 // write global checksum, and runinfo in new file
 void write_1st_msg(const char* filename, GlobalDat& dat,
-                          boost::uint64_t chksum){
+                          size_t chksum){
   // open file
   FILE* fp;
   fp = fopen(filename, "w");

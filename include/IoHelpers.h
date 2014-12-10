@@ -32,7 +32,7 @@ struct GlobalDat {
   size_t nb_perambs;
 };
  void write_1st_msg(const char* filename, GlobalDat& dat,
-                          boost::uint64_t chksum);
+                           size_t chksum);
  void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>& tags,
               LimeWriter* w, bool be);
    
@@ -135,7 +135,7 @@ inline void swap_tag_vector(std::vector<Tag>& tags){
   for (auto& label : tags) label = swap_single_tag(label);
 }
 // Check checksums
-void file_check(const boost::uint64_t glob_check,
+void file_check(const size_t glob_check,
                 const std::vector<boost::uint64_t>& checksums,
                 const std::vector<cmplx>& correlators);
 #endif // IO_HELPERS_H_

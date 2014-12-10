@@ -50,7 +50,7 @@ int main(int ac, char* av[]) {
 
   // Fill correlators with random numbers
   for (auto& el : correlators) fill_corr_rand(el, &el-&correlators[0]);
-  write_2pt_lime("final_write", run_id, attributes, correlators);
+  //write_2pt_lime("final_write", run_id, attributes, correlators);
   //swap_correlators(correlators);
   //swap_correlators(correlators);
   //for (auto& el : correlators.at(0)) std::cout << el << std::endl;
@@ -67,6 +67,7 @@ int main(int ac, char* av[]) {
 
   std::vector<Tag> tags_in(100);
   std::vector<vec> correlators_in(100);
+  for (auto& corr : correlators_in) corr.resize(96);
   std::cout << "read_in from file: final_write " << std::endl;
   read_2pt_lime("final_write", tags_in, correlators_in);
 //  for (auto& el : correlators_in.at(0)) std::cout << el << std::endl;
