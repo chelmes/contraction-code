@@ -45,12 +45,19 @@ int main(int ac, char* av[]) {
   // 100 Correlators
   std::vector<vec> correlators(100);
   for (auto& el : correlators) el.resize(96);
+  Tag id;
+  id.mom[0] = 1;
+  id.mom[1] = 1;
+  id.dis[0] = 1;
+  id.dis[1] = 1;
+  id.gam[0] = 1;
+  id.gam[1] = 1;
   // attributes of the correlators
   std::vector<Tag> attributes(100);
-
+  attributes[12] = id;
   // Fill correlators with random numbers
   for (auto& el : correlators) fill_corr_rand(el, &el-&correlators[0]);
-  //write_2pt_lime("final_write", run_id, attributes, correlators);
+  write_2pt_lime("final_write", run_id, attributes, correlators);
   //swap_correlators(correlators);
   //swap_correlators(correlators);
   //for (auto& el : correlators.at(0)) std::cout << el << std::endl;
@@ -64,12 +71,16 @@ int main(int ac, char* av[]) {
   std::cout << bytes << std::endl;
   chk_agent.process_bytes(collect.data(), bytes); 
   std::cout << "Checksum for Correlators is:" << chk_agent.checksum() << std::endl;
+  for(auto& dat : correlators.at(12)) std::cout << dat << std::endl;
 
   std::vector<Tag> tags_in(100);
   std::vector<vec> correlators_in(100);
   for (auto& corr : correlators_in) corr.resize(96);
   std::cout << "read_in from file: final_write " << std::endl;
-  read_2pt_lime("final_write", tags_in, correlators_in);
+  //read_2pt_lime("final_write", tags_in, correlators_in);
+  std::vector<cmplx> result;
+  get_2pt_lime("final_write", 100, 96, id, result );
+  for(auto& dat : result) std::cout << dat << std::endl;
 //  for (auto& el : correlators_in.at(0)) std::cout << el << std::endl;
  
 

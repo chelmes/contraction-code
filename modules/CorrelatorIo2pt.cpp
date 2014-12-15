@@ -127,44 +127,66 @@
   else std::cout << "#elements for tags and correlators not equal" << std::endl;
 }
 
-void get_2pt_lime(const char* filename, const Tag& tag,
-    std::vector<std::complex<double> >& corr){
+std::vector<cmplx> corr_to_tag(const size_t length, Tag& tag){
+  std::vector<cmplx> corr;
 
-  // search for record in open lime file (compare record)
-  Tag read_tag;
-
-  // Begin of Lime Stuff
-  FILE* fp;
-  LimeReader* r;
-  // Each message contains to records. Uneven records 
-  n_uint64_t tag_bytes = sizeof(read_tag);
-  n_uint64_t data_bytes = corr.size()*2*sizeof(double);
-  // Access flags for record and message: -MB (Message Begin): 1 if true 
-  //                                      -ME (Message End): 1 if true
-  int MB_flag, ME_flag;
-  int file_status = 0; 
-  int act_status = 0; 
-  fp = fopen( filename, "r" );
-  r = limeCreateReader( fp );
-  while(file_status != LIME_EOF){
-    // read tag
-    file_status = limeReaderNextRecord(r);
-    MB_flag = limeReaderMBFlag(r);
-    ME_flag = limeReaderMEFlag(r);
-    std::cout << MB_flag << " " << ME_flag << std::endl;
-    // get Metainfo of record in read tag
-    if(MB_flag == 0 && ME_flag == 0){
-      act_status = limeReaderReadData(&read_tag, &tag_bytes, r);
-      // compare read_tag with tag
-      if(compare_tags(read_tag, tag)){
-        // if it is the same write next record to correlation function
-        file_status = limeReaderNextRecord(r);
-        MB_flag = limeReaderMBFlag(r);
-        ME_flag = limeReaderMEFlag(r);
-        std::cout << data_bytes << std::endl;
-        act_status = limeReaderReadData(corr.data(), &data_bytes, r);
-      }
-    }
-  }
+  return corr;
 }
+
+// Look for correlator corresponding to tag given as argument
+void get_2pt_lime(const char* filename, const size_t num_corrs,
+                  const size_t corr_length, const Tag& tag,
+                  std::vector<cmplx >& corr){
+  // Set up temporary structure as copy of incoming
+    std::vector<vec> tmp_correlators(num_corrs);
+    for(auto& corr : tmp_correlators) corr.resize(corr_length);
+    std::vector<Tag> tmp_tags (num_corrs);
+
+  // Read in whole Configuration function
+    read_2pt_lime(filename, tmp_tags, tmp_correlators);
+  // look for appropriate tag in vector of tags
+    size_t tmp_tag_ind;
+    for(size_t ind = 0; ind < tmp_tags.size(); ++ind)
+      if (compare_tags(tag, tmp_tags[ind])) tmp_tag_ind = ind;
+  // store correlation function in output data
+    corr = tmp_correlators[tmp_tag_ind];
+
+}
+//  // search for record in open lime file (compare record)
+//  Tag read_tag;
+//
+//  // Begin of Lime Stuff
+//  FILE* fp;
+//  LimeReader* r;
+//  // Each message contains to records. Uneven records 
+//  n_uint64_t tag_bytes = sizeof(read_tag);
+//  n_uint64_t data_bytes = corr.size()*2*sizeof(double);
+//  // Access flags for record and message: -MB (Message Begin): 1 if true 
+//  //                                      -ME (Message End): 1 if true
+//  int MB_flag, ME_flag;
+//  int file_status = 0; 
+//  int act_status = 0; 
+//  fp = fopen( filename, "r" );
+//  r = limeCreateReader( fp );
+//  while(file_status != LIME_EOF){
+//    // read tag
+//    file_status = limeReaderNextRecord(r);
+//    MB_flag = limeReaderMBFlag(r);
+//    ME_flag = limeReaderMEFlag(r);
+//    std::cout << MB_flag << " " << ME_flag << std::endl;
+//    // get Metainfo of record in read tag
+//    if(MB_flag == 0 && ME_flag == 0){
+//      act_status = limeReaderReadData(&read_tag, &tag_bytes, r);
+//      // compare read_tag with tag
+//      if(compare_tags(read_tag, tag)){
+//        // if it is the same write next record to correlation function
+//        file_status = limeReaderNextRecord(r);
+//        MB_flag = limeReaderMBFlag(r);
+//        ME_flag = limeReaderMEFlag(r);
+//        std::cout << data_bytes << std::endl;
+//        act_status = limeReaderReadData(corr.data(), &data_bytes, r);
+//      }
+//    }
+//  }
+//}
 
