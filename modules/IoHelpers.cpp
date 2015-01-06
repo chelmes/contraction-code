@@ -35,7 +35,17 @@
     so_si.gam[i] = i+3;
   }
 }
-
+// Convert ascii labels to correlation tag
+Tag id(size_t g_so, size_t g_si, size_t p_so, size_t p_si, size_t dis_so, size_t dis_si){
+  Tag item;
+  item.mom[0] = p_so;
+  item.mom[1] = p_si;
+  item.dis[0] = dis_so;
+  item.dis[1] = dis_si;
+  item.gam[0] = g_so;
+  item.gam[1] = g_si;
+  return item;
+} 
 // File handling ///////////////////////////////////////////////////////////////
 
 // write global checksum, and runinfo in new file
@@ -68,6 +78,12 @@ void write_1st_msg(const char* filename, GlobalDat& dat,
   limeDestroyWriter(w);
   fclose(fp);
 } 
+
+static bool tag_exist(const char* filename, Tag id){
+  bool found = false;
+  
+  return found;
+}
 
 //append correlation functions to file
 void append_msgs(const char* filename, std::vector<vec>& corr, std::vector<Tag>& tags,

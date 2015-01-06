@@ -120,6 +120,8 @@ inline bool file_exist(const char* name) {
 }
 // Set the tag from two operator structures
  void set_tag(Tag& so_si, const pdg& op1, const pdg& op2);
+// Convert ascii labels to correlation tag
+Tag id(size_t g_so, size_t g_si, size_t p_so, size_t p_si, size_t dis_so, size_t dis_si);
 // Compare two tags of correlation functions
  bool compare_tags(const Tag& tag1, const Tag& tag2);
 // Calculate p^2
