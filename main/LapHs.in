@@ -7,7 +7,7 @@ Ly = 24
 Lz = 24 
 
 # configuration handling:
-start_config = 1930 
+start_config = 1870 
 end_config   = 1930 
 delta_config = 4
 config_path = /hiskp/gauges/A40.24_L24_T48_beta190_mul0040_musig150_mudel190_kappa1632700

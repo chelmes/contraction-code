@@ -18,7 +18,7 @@ all: rmxeq mkdep mkxeq
 
 # main programs and modules to be compiled
 
-MAIN = LapHs
+MAIN =  extract_corrs
 
 GENERAL = BasicOperator Perambulator io_utils config_utils RandomVector \
           ranlxs EigenVector GaugeField VdaggerV Correlators Correlators_small_traces \
