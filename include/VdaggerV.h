@@ -10,7 +10,7 @@
 
 #include "boost/multi_array.hpp"
 #include "Eigen/Dense"
-
+#include "GaugeField.h"
 #include "EigenVector.h"
 #include "global_data.h"
 #include "RandomVector.h"

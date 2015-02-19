@@ -99,11 +99,16 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
   std::cout << "\tbuild vdaggerv:";
 
   const size_t Lt = global_data->get_Lt();
+  const size_t Lx = global_data->get_Lx();
+  const size_t Ly = global_data->get_Ly();
+  const size_t Lz = global_data->get_Lz();
+
   const size_t dim_row = global_data->get_dim_row();
   const size_t nb_ev = global_data->get_number_of_eigen_vec();
   const size_t id_unity = global_data->get_index_of_unity();
 
   const vec_pd_VdaggerV op_VdaggerV = global_data->get_lookup_VdaggerV();
+  const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
 
   std::fill(vdaggerv.origin(), vdaggerv.origin() + vdaggerv.num_elements(), 
             Eigen::MatrixXcd::Zero(nb_ev, nb_ev));
@@ -112,6 +117,8 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 {
   Eigen::VectorXcd mom = Eigen::VectorXcd::Zero(dim_row);
   LapH::EigenVector V_t(1, dim_row, nb_ev);// each thread needs its own copy
+  GaugeField gauge(0, 1, dim_row/3, 4);
+  gauge.init(Lx, Ly, Lz);
   #pragma omp for schedule(dynamic)
   for(size_t t = 0; t < Lt; ++t){
 
@@ -131,7 +138,23 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
         for(size_t x = 0; x < dim_row; ++x) {
           mom(x) = momentum[op.id][x/3];
         }
-        vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * V_t[0];
+        // check whether displacement is wanted and determine the direction
+        // (parallel to gamma)
+        size_t dir = 0;
+        for(auto& d : op_Corr[op.index].dis3) dir = (d>0) ? d : 0;
+        if(dir > 0){
+          gauge.read_gauge_field(config_i, t, t);
+          // LapH::EigenVector W_t(1,dim_row, nb_ev);
+          Eigen::MatrixXcd W_t;
+          // have to use dir - 1 for consistency with infile
+          W_t = gauge.disp(V_t[0], 0, dir-1 ,true);
+          vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * W_t;
+        }
+
+        else{
+        // zero displacement
+          vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * V_t[0];
+        }
 
       }
       else{
