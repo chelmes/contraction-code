@@ -43,7 +43,7 @@ private:
   int number_of_inversions;
   int start_config, end_config, delta_config;
   int verbose;
-  size_t index_of_unity;
+  int index_of_unity;
   std::string path_eigenvectors;
   std::string name_eigenvectors;
   std::string path_perambulators;
@@ -187,7 +187,7 @@ public:
   inline const indexlist_4& get_rnd_vec_4pt() {
     return rnd_vec_4pt;
   }
-  inline const size_t get_index_of_unity() {
+  inline const int get_index_of_unity() {
     return index_of_unity;
   }
   inline const vec_pd_VdaggerV get_lookup_VdaggerV() {

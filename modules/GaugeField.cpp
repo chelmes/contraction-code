@@ -45,7 +45,7 @@ void GaugeField::init(const size_t L1, const size_t L2, const size_t L3){
         //neg. dir.
         if ((x2_h[0] = x2 - 1) < 0) x2_h[0] = L2 -1;
         //pos. dir.
-        if ((x2_h[1] = x2 +1) == L2) x2_h[1] = 0;
+        if ((x2_h[1] = x2 + 1) == L2) x2_h[1] = 0;
         //overall volume index
         int i = x0_h[2] + x1_h[2] + x2_h[2];
         //std::cout << x0 << " " << x1 << " " << x2 << " " << i << std::endl;
@@ -125,7 +125,6 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
       }
     }
   }
-  std::cout << el_input << " doubles read in from ildg timeslice " << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -415,7 +414,7 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-///Displacement routines, returning one Eigenvector////////////////////////////
+///Displacement routines, returning one Eigenvector/Eigensystem////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 //Derivative, toogle symmetrization via sym
@@ -451,12 +450,12 @@ Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
       quark_up = in.segment(3*up_ind,3);
       quark_down = in.segment(3*down_ind,3);
       if(sym) {
-        tmp = 0.5*( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
+        tmp = 0.5 * ( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
             ( ( (tslices.at(t))[down_ind][dir].adjoint() ) * quark_down) ); 
       }
       else { 
         Eigen::Vector3cd quark_point = in.segment(3*spatial_ind,3);
-        tmp =  ( (tslices.at(t))[spatial_ind][dir] * quark_up) - quark_point ;
+        tmp = ( (tslices.at(t))[spatial_ind][dir] * quark_up) - quark_point ;
       }
       (out.col(ev)).segment(3*spatial_ind,3) = tmp;
     }//end spatial loop
@@ -582,6 +581,7 @@ double GaugeField::plaque_ts(const size_t t){
 //Read in gauge field to vector of timeslices
 void GaugeField::read_gauge_field(const size_t config_i, const size_t slice_i,
                                   const size_t slice_f){
+  const int verbose = global_data -> get_verbose();
   char filename[200];
   std::string name = global_data->get_config_path()+"/conf";
   sprintf(filename,"%s.%04d", name.c_str(), config_i);
@@ -595,6 +595,10 @@ void GaugeField::read_gauge_field(const size_t config_i, const size_t slice_i,
     map_timeslice_to_eigen(t, timeslice);
   }   
   delete[] configuration;
+  if(verbose){
+    std::cout << slice_f+1-slice_i << " timeslice(s) read in from config " << config_i 
+              << std::endl;
+  }
 }
 
 //Read in the gaugefield, deprecated tmLqcd routine
@@ -626,7 +630,7 @@ void GaugeField::read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
       printf("reading gauge fields from files:\n");
     }
     else{
-      printf("\treading gauge fields:");
+      printf("\treading gauge fields:\n");
     }
 
     words_bigendian = big_endian();
@@ -751,10 +755,4 @@ void GaugeField::read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
   }
 
 }
-
-
-
-
-
-
 

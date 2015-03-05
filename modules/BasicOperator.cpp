@@ -330,12 +330,18 @@ void BasicOperator::init_operator(const char dilution,
                   for(size_t col = 0; col < 4; col++){
                   for(size_t row = 0; row < 4; row++){
 
+               //     Q2[t_0][t][ti][op.id][rnd_i][rnd_j]
+               //         .block(row*dilE, col*dilE, dilE, dilE) += value * 
+               //       M.block(row*dilE, block_dil* nb_ev, dilE, nb_ev) * 
+               //       peram[rnd_j]
+               //         .block(4*nb_ev*t_0 + order_dirac(op.id, block_dil)*nb_ev, 
+               //           Q2_size*tend + col*dilE, nb_ev, dilE);
+
                     Q2[t_0][t][ti][op.id][rnd_i][rnd_j]
-                        .block(row*dilE, col*dilE, dilE, dilE) += value * 
-                      M.block(row*dilE, block_dil* nb_ev, dilE, nb_ev) * 
-                      peram[rnd_j]
-                        .block(4*nb_ev*t_0 + order_dirac(op.id, block_dil)*nb_ev, 
-                          Q2_size*tend + col*dilE, nb_ev, dilE);
+                     .block(row*dilE, col*dilE, dilE, dilE) += value *
+                       M.block(row*dilE, order_dirac(op.id, block_dil)* nb_ev, dilE, nb_ev) * 
+                       peram[rnd_j].block(4*nb_ev*t_0 + block_dil*nb_ev, 
+                        Q2_size*tend + col*dilE, nb_ev, dilE);
 
               }}}//dilution ends here
 
@@ -376,16 +382,18 @@ void BasicOperator::init_operator(const char dilution,
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
-size_t BasicOperator::order_dirac(const size_t index, size_t block) const {
+size_t BasicOperator::order_dirac(const size_t index, const size_t block) const {
 
   const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
+  size_t block_reordered = block;
 
   for(const auto& dirac : op_Corr[index].gamma){
     if(dirac != 4){
+      block_reordered = gamma[dirac].row[block_reordered];
     }
   }
 
-  return block;
+  return block_reordered;
 }
 
 /******************************************************************************/
@@ -395,43 +403,13 @@ void BasicOperator::value_dirac(const size_t index, const size_t block,
                                 cmplx& value) const{
 
   const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
+  size_t block_reordered = block;
 
   for(const auto& dirac : op_Corr[index].gamma){
     if(dirac != 4){
-      value = value * gamma[dirac].value[block];
+      value = value * gamma[dirac].value[block_reordered];
+      block_reordered = gamma[dirac].row[block_reordered];
     }
   }
 
 }
-
-/******************************************************************************/
-/******************************************************************************/
-/******************************************************************************/
-void BasicOperator::mult_dirac(const Eigen::MatrixXcd& matrix,
-                               Eigen::MatrixXcd& reordered, 
-                               const size_t index) const {
-
-  const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
-
-  const size_t rows = matrix.rows();
-  const size_t cols = matrix.cols();
-  const size_t col = cols/4;
-  if( (rows != reordered.rows()) || (cols != reordered.cols()) ){
-    std::cout << "Error! In BasicOperator::mult_dirac: size of matrix and "
-                 "reordered must be equal" << std::endl;
-    exit(0);
-  }
-
-  for(const auto& dirac : op_Corr[index].gamma){
-    if(dirac != 4){
-      for(size_t block = 0; block < 4; block++){
-        reordered.block(0, block * col, rows, col) = 
-          gamma[dirac].value[block] *
-          matrix.block(0, gamma[dirac].row[block]*col, rows, col);
-      }
-    }
-  }
-
-}
-
-

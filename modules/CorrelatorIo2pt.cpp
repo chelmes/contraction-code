@@ -151,12 +151,12 @@ void convert_hadron_to_vec(const io_list& op_io, const array_cd_d2& C2_mes,
   vec_index_4pt lookup_4pt = global_data->get_lookup_4pt_trace();
 
   corr.resize(op_io.size());
+  tags.resize(op_io.size());
   for(auto& c : corr)
     c.resize(Lt);
-  tags.resize(op_io.size());
 
   for(const auto& op : op_io){
-  for(const auto& i : op.index_pt){
+    for(const auto& i : op.index_pt){
     //TODO: solve the copying of C2_mes (boost) into corr (std::vec) without
     // the copy constructor in assign()
     corr[op.id].assign(C2_mes[op.id].origin(), C2_mes[op.id].origin() + 
@@ -164,6 +164,7 @@ void convert_hadron_to_vec(const io_list& op_io, const array_cd_d2& C2_mes,
 
     if( (corr_type == "C2+") || (corr_type == "C4I2+_1") || (corr_type == "C4I2+_2") ){
       set_tag(tags[op.id], i, lookup_2pt);
+      print_tag(tags[op.id]);
     }
     else if( corr_type == "C4I2+_3"){
       set_tag(tags[op.id], i, lookup_4pt);
@@ -180,12 +181,17 @@ void export_corr_IO (const char* filename, const vec_index_IO_1& op_IO,
   GlobalDat dat;
   std::vector<Tag> tags;
   std::vector<std::string> tag_strings;
-  std::string tag_string;
   std::vector<vec> corr;
+  Correlator_list inf_list = global_data->get_correlator_list();
+  for(auto& i : inf_list) std::cout << i.type << std::endl;
 
   convert_hadron_to_vec <vec_index_IO_1> (op_IO, C2_mes, corr_type, tags, corr);
   for(const auto& tag : tags){
+    // tag_string needs new initialization otherwise it is not overwritten.
+    // TODO: Change that in tag_to string
+    std::string tag_string;
     tag_to_string(tag, tag_string);
+    std::cout << tag_string << std::endl;
     tag_strings.push_back(tag_string);
   }
 

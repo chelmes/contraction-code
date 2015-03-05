@@ -105,7 +105,7 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 
   const size_t dim_row = global_data->get_dim_row();
   const size_t nb_ev = global_data->get_number_of_eigen_vec();
-  const size_t id_unity = global_data->get_index_of_unity();
+  const int id_unity = global_data->get_index_of_unity();
 
   const vec_pd_VdaggerV op_VdaggerV = global_data->get_lookup_VdaggerV();
   const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
@@ -117,13 +117,16 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 {
   Eigen::VectorXcd mom = Eigen::VectorXcd::Zero(dim_row);
   LapH::EigenVector V_t(1, dim_row, nb_ev);// each thread needs its own copy
-  GaugeField gauge(0, 1, dim_row/3, 4);
+  GaugeField gauge(0, Lt, dim_row/3, 4);
   gauge.init(Lx, Ly, Lz);
+  gauge.read_gauge_field(config_i, 0, Lt);
   #pragma omp for schedule(dynamic)
   for(size_t t = 0; t < Lt; ++t){
+ 
+    //gauge.smearing_hyp(t, 0.62, 0.62, 3); 
+    // TODO: Zero momentum is hard coded at the moment
 
     read_eigenvectors_from_file(V_t, config_i, t);
-
     // VdaggerV is independent of the gamma structure and momenta connected by
     // sign flip are related by adjoining VdaggerV. Thus the expensive 
     // calculation must only be performed for a subset of quantum numbers given
@@ -132,39 +135,36 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 
       // For zero momentum and displacement VdaggerV is the unit matrix, thus
       // the calculation is not performed
+      //std::cout << op.index << std::endl;
       if(op.index != id_unity){
-        // momentum vector contains exp(-i p x). Divisor 3 for colour index. 
-        // All three colours on same lattice site get the same momentum.
-        for(size_t x = 0; x < dim_row; ++x) {
-          mom(x) = momentum[op.id][x/3];
-        }
         // check whether displacement is wanted and determine the direction
         // (parallel to gamma)
         size_t dir = 0;
-        for(auto& d : op_Corr[op.index].dis3) dir = (d>0) ? d : 0;
-        if(dir > 0){
-          gauge.read_gauge_field(config_i, t, t);
-          // LapH::EigenVector W_t(1,dim_row, nb_ev);
-          Eigen::MatrixXcd W_t;
-          // have to use dir - 1 for consistency with infile
-          W_t = gauge.disp(V_t[0], 0, dir-1 ,true);
-          vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * W_t;
+        //TODO: Order of displacements matters
+        //TODO: At the moment only support for d > 0!!!!
+        Eigen::MatrixXcd W_t = V_t[0];
+        for(auto& d : op_Corr[op.index].dis3){ 
+          if(d > 0){
+            // displace d times in direction dir
+            for(size_t nb_derv_one_dir = 0; nb_derv_one_dir < d; nb_derv_one_dir++){ 
+              // LapH::EigenVector W_t(1,dim_row, nb_ev);
+              if(nb_derv_one_dir == 0)
+                W_t = gauge.disp(V_t[0], t, dir, true);
+              else
+                W_t = gauge.disp(W_t, t, dir, true);
+            }
+          }
+          dir++;
         }
-
-        else{
-        // zero displacement
-          vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * V_t[0];
-        }
-
+        vdaggerv[op.id][t] = V_t[0].adjoint() * W_t;
+       // Eigen::MatrixXcd Trash = vdaggerv[op.id][t].adjoint();
+       // vdaggerv[op.id][t] -= Trash; 
       }
       else{
-        // zero momentum 
+        // zero momentum and no displacement
         (vdaggerv[op.id][t]) = Eigen::MatrixXcd::Identity(nb_ev, nb_ev);
       }
-
-    }
-
-//    }} // loop over momentum and displacement
+    } // loop over operators  
   } // loop over time
 }// pragma omp parallel ends here
 
@@ -180,109 +180,197 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 /******************************************************************************/
 /******************************************************************************/
 void LapH::VdaggerV::build_rvdaggervr(const int config_i,
-                               const std::vector<LapH::RandomVector>& rnd_vec) {
-
-  // check of vdaggerv is already build
-  if(not is_vdaggerv_set){
-    std::cout << "\n\n\tCaution: vdaggerv is not set and rvdaggervr cannot be" 
-              << " computed\n\n" << std::endl;
-    exit(0);
-  }
-
+    const std::vector<LapH::RandomVector>& rnd_vec) {
+//  check of vdaggerv is already build
+    if(not is_vdaggerv_set){
+      std::cout << "\n\n\tCaution: vdaggerv is not set and rvdaggervr cannot be"
+        << " computed\n\n" << std::endl;
+      exit(0);
+    }
   clock_t t2 = clock();
-  std::cout << "\tbuild rvdaggervr:";
-
+  std::cout << "\tbuild rvdaggerv and rvdaggervr:";
   const size_t Lt = global_data->get_Lt();
   const size_t nb_ev = global_data->get_number_of_eigen_vec();
   const std::vector<quark> quarks = global_data->get_quarks();
   const size_t dilE = quarks[0].number_of_dilution_E;
   const size_t nb_rnd = quarks[0].number_of_rnd_vec;
-
-  const vec_pd_rVdaggerVr op_rVdaggerVr = global_data->get_lookup_rVdaggerVr();
+  const vec_pd_rVdaggerVr op_rVdaggerVr =
+    global_data->get_lookup_rVdaggerVr();
   const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
 
-  std::fill(rvdaggervr.data(), rvdaggervr.data() + rvdaggervr.num_elements(), 
-            Eigen::MatrixXcd::Zero(dilE, 4*dilE));
-
+  std::fill(rvdaggervr.data(), rvdaggervr.data() + rvdaggervr.num_elements(),
+      Eigen::MatrixXcd::Zero(4*dilE, 4*dilE));
   // TODO: just a workaround
   // can be changed to op by running over p = op/nb_dg, but dis currently
   // not supported.
-
-  #pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(dynamic)
   for(size_t t = 0; t < Lt; t++){
-
-  // rvdaggervr is calculated by multiplying the vdaggerv with the same quantum
-  // numbers with random vectors from right and left. rvdaggervr for momenta 
-  // with opposing sign are related by adjoining. Thus it suffices to calculate
-  // it for half of the indices for which the flag op.adjoint < 0.
-  for(const auto& op : op_rVdaggerVr){
-    if(op.adjoint == false){
-
-      size_t id_VdaggerV = op_Corr[op.index].id_vdv;
-
-      for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
-        Eigen::MatrixXcd M = Eigen::MatrixXcd::Zero(nb_ev, 4*dilE);
-        // dilution from left
-        for(size_t block= 0; block < 4; block++){
-        for(size_t vec_i = 0; vec_i < nb_ev; ++vec_i) {
-          size_t blk_i =  block + vec_i * 4 + 4 * nb_ev * t;
-          
-          M.block(0, vec_i%dilE + dilE*block, nb_ev, 1) += 
-               vdaggerv[id_VdaggerV][t].col(vec_i) * 
-               rnd_vec[rnd_i][blk_i];
-        }}// end of dilution
-        for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
-        if(rnd_i != rnd_j){
-          // dilution from right
-          for(size_t block = 0; block < 4; block++){
-          for(size_t vec_j = 0; vec_j < nb_ev; ++vec_j) {
-            size_t blk_j =  block + vec_j * 4 + 4 * nb_ev * t;
-            rvdaggervr[op.id][t][rnd_j][rnd_i]
-                          .block(vec_j%dilE, dilE*block , 1, dilE) +=
-                M.block(vec_j, dilE*block, 1, dilE) * 
-                std::conj(rnd_vec[rnd_j][blk_j]);
-          }}// end of dilution
-        }}// rnd_j loop ends here
-      }// rnd_i loop ends here
-    }
-  }
-
-  // rvdaggervr for momenta with opposing sign are related by adjoining. Thus
-  // for half of the indices, the calculation reduces to adjoining the
-  // corresponding rvdaggervr and swapping the random vectors (as the order
-  // of multiplication is reversed). The index of corresponding quantum numbers
-  // is op.adjoint. It serves as flag for adjoining simultaneously, as it is
-  // positive if and only if it shall be adjoined.
-  // Need to loop twice as the corresponding rvdaggervr must all be calculated
-  // already.
-  for(const auto& op : op_rVdaggerVr){
-    if(op.adjoint == true){
-
-      for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
-      for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
-      if(rnd_i != rnd_j){
-
-        // rvdaggervr is a blockdiagonal 4*dilE x 4*dilE matrix. To save memory,
-        // only the diagonal blocks are saved and it is written as a column 
-        // vector of blocks. To reproduce the correct behavior under adjoining, 
-        // the blocks have to be adjoined seperately.
-        // is .adjoint().transpose() faster?
-        for(size_t block = 0; block < 4; block++){
-          rvdaggervr[op.id][t][rnd_j][rnd_i]
-                              .block(0, block*dilE, dilE, dilE) =
-            (rvdaggervr[op.id_adjoint][t][rnd_i][rnd_j]
-                              .block(0, block*dilE, dilE, dilE)).adjoint();
+    // rvdaggervr is calculated by multiplying the vdaggerv with the same quantum
+      // numbers with random vectors from right and left. rvdaggervr for momenta
+      // with opposing sign are related by adjoining. Thus it suffices to calculate
+      // it for half of the indices for which the flag op.adjoint < 0.
+      for(const auto& op : op_rVdaggerVr){
+        if(op.adjoint == false){
+          size_t id_VdaggerV = op_Corr[op.index].id_vdv;
+          for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
+            Eigen::MatrixXcd M = Eigen::MatrixXcd::Zero(dilE, 4*nb_ev);
+            // dilution from left
+            for(size_t block= 0; block < 4; block++){
+              for(size_t vec_i = 0; vec_i < nb_ev; ++vec_i) {
+                size_t blk_i = block + vec_i * 4 + 4 * nb_ev * t;
+                  M.block(vec_i%dilE, block*nb_ev, 1, nb_ev) +=
+                  std::conj(rnd_vec[rnd_i][blk_i]) *
+                  vdaggerv[id_VdaggerV][t].row(vec_i);
+              }}// end of dilution
+            for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
+              if(rnd_i != rnd_j){
+                // dilution from right
+                for(size_t row = 0; row < 4; row++){
+                  for(size_t block = 0; block < 4; block++){
+                    for(size_t vec_j = 0; vec_j < nb_ev; ++vec_j) {
+                      size_t blk_j = row + vec_j * 4 + 4 * nb_ev * t;
+                      rvdaggervr[op.id][t][rnd_i][rnd_j]
+                        .block(row*dilE, block*dilE+vec_j%dilE, dilE, 1) +=
+                        M.col(block*nb_ev+vec_j) *
+                        rnd_vec[rnd_j][blk_j];
+                    }}}// end of dilution
+              }}// rnd_j loop ends here
+          }// rnd_i loop ends here
         }
-      }}}// loops over rnd vecs
-
-    }
-  }
-
+      }
+    // rvdaggervr for momenta with opposing sign are related by adjoining. Thus
+    // for half of the indices, the calculation reduces to adjoining the
+    // corresponding rvdaggervr and swapping the random vectors (as the order
+    // of multiplication is reversed). The index of corresponding quantum numbers
+      // is op.adjoint. It serves as flag for adjoining simultaneously, as it is
+      // positive if and only if it shall be adjoined.
+      // Need to loop twice as the corresponding rvdaggervr must all be calculated
+      // already.
+      for(const auto& op : op_rVdaggerVr){
+        if(op.adjoint == true){
+          for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
+            for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
+              if(rnd_i != rnd_j){
+                // rvdaggervr is a blockdiagonal 4*dilE x 4*dilE matrix. To save memory,
+                // only the diagonal blocks are saved and it is written as a column
+                // vector of blocks. To reproduce the correct behavior under adjoining,
+                // the blocks have to be adjoined seperately.
+                // is .adjoint().transpose() faster?
+                rvdaggervr[op.id][t][rnd_j][rnd_i] =
+                  rvdaggervr[op.id_adjoint][t][rnd_i][rnd_j].adjoint();
+              }}}// loops over rnd vecs
+        }
+      }
   }// time, momemtum and displacement loop ends here
-
   t2 = clock() - t2;
-  std::cout << std::setprecision(1) << "\t\tSUCCESS - " << std::fixed 
+  std::cout << std::setprecision(1) << "\t\tSUCCESS - " << std::fixed
     << ((float) t2)/CLOCKS_PER_SEC << " seconds" << std::endl;
-
 }
 
+//void LapH::VdaggerV::build_rvdaggervr(const int config_i,
+//                               const std::vector<LapH::RandomVector>& rnd_vec) {
+//
+//  // check of vdaggerv is already build
+//  if(not is_vdaggerv_set){
+//    std::cout << "\n\n\tCaution: vdaggerv is not set and rvdaggervr cannot be" 
+//              << " computed\n\n" << std::endl;
+//    exit(0);
+//  }
+//
+//  clock_t t2 = clock();
+//  std::cout << "\tbuild rvdaggervr:";
+//
+//  const size_t Lt = global_data->get_Lt();
+//  const size_t nb_ev = global_data->get_number_of_eigen_vec();
+//  const std::vector<quark> quarks = global_data->get_quarks();
+//  const size_t dilE = quarks[0].number_of_dilution_E;
+//  const size_t nb_rnd = quarks[0].number_of_rnd_vec;
+//
+//  const vec_pd_rVdaggerVr op_rVdaggerVr = global_data->get_lookup_rVdaggerVr();
+//  const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
+//
+//  std::fill(rvdaggervr.data(), rvdaggervr.data() + rvdaggervr.num_elements(), 
+//            Eigen::MatrixXcd::Zero(dilE, 4*dilE));
+//
+//  // TODO: just a workaround
+//  // can be changed to op by running over p = op/nb_dg, but dis currently
+//  // not supported.
+//
+//  #pragma omp parallel for schedule(dynamic)
+//  for(size_t t = 0; t < Lt; t++){
+//
+//  // rvdaggervr is calculated by multiplying the vdaggerv with the same quantum
+//  // numbers with random vectors from right and left. rvdaggervr for momenta 
+//  // with opposing sign are related by adjoining. Thus it suffices to calculate
+//  // it for half of the indices for which the flag op.adjoint < 0.
+//  for(const auto& op : op_rVdaggerVr){
+//    if(op.adjoint == false){
+//
+//      size_t id_VdaggerV = op_Corr[op.index].id_vdv;
+//
+//      for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
+//        Eigen::MatrixXcd M = Eigen::MatrixXcd::Zero(nb_ev, 4*dilE);
+//        // dilution from left
+//        for(size_t block= 0; block < 4; block++){
+//        for(size_t vec_i = 0; vec_i < nb_ev; ++vec_i) {
+//          size_t blk_i =  block + vec_i * 4 + 4 * nb_ev * t;
+//          M.block(0, vec_i%dilE + dilE*block, nb_ev, 1) += 
+//               vdaggerv[id_VdaggerV][t].col(vec_i) * 
+//               rnd_vec[rnd_i][blk_i];
+//          
+//        }}// end of dilution
+//        for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
+//        if(rnd_i != rnd_j){
+//          // dilution from right
+//          for(size_t block = 0; block < 4; block++){
+//          for(size_t vec_j = 0; vec_j < nb_ev; ++vec_j) {
+//            size_t blk_j =  block + vec_j * 4 + 4 * nb_ev * t;
+//            rvdaggervr[op.id][t][rnd_j][rnd_i]
+//                          .block(vec_j%dilE, dilE*block , 1, dilE) +=
+//                M.block(vec_j, dilE*block, 1, dilE) * 
+//                std::conj(rnd_vec[rnd_j][blk_j]);
+//          }}// end of dilution
+//        }}// rnd_j loop ends here
+//      }// rnd_i loop ends here
+//    }
+//  }
+//
+//  // rvdaggervr for momenta with opposing sign are related by adjoining. Thus
+//  // for half of the indices, the calculation reduces to adjoining the
+//  // corresponding rvdaggervr and swapping the random vectors (as the order
+//  // of multiplication is reversed). The index of corresponding quantum numbers
+//  // is op.adjoint. It serves as flag for adjoining simultaneously, as it is
+//  // positive if and only if it shall be adjoined.
+//  // Need to loop twice as the corresponding rvdaggervr must all be calculated
+//  // already.
+//  for(const auto& op : op_rVdaggerVr){
+//    if(op.adjoint == true){
+//
+//      for(size_t rnd_i = 0; rnd_i < nb_rnd; ++rnd_i) {
+//      for(size_t rnd_j = 0; rnd_j < nb_rnd; ++rnd_j){
+//      if(rnd_i != rnd_j){
+//
+//        // rvdaggervr is a blockdiagonal 4*dilE x 4*dilE matrix. To save memory,
+//        // only the diagonal blocks are saved and it is written as a column 
+//        // vector of blocks. To reproduce the correct behavior under adjoining, 
+//        // the blocks have to be adjoined seperately.
+//        // is .adjoint().transpose() faster?
+//        for(size_t block = 0; block < 4; block++){
+//          rvdaggervr[op.id][t][rnd_j][rnd_i]
+//                              .block(0, block*dilE, dilE, dilE) =
+//            (rvdaggervr[op.id_adjoint][t][rnd_i][rnd_j]
+//                              .block(0, block*dilE, dilE, dilE)).adjoint();
+//        }
+//      }}}// loops over rnd vecs
+//
+//    }
+//  }
+//
+//  }// time, momemtum and displacement loop ends here
+//
+//  t2 = clock() - t2;
+//  std::cout << std::setprecision(1) << "\t\tSUCCESS - " << std::fixed 
+//    << ((float) t2)/CLOCKS_PER_SEC << " seconds" << std::endl;
+//
+//}
+//

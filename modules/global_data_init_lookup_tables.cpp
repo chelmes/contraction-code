@@ -18,7 +18,7 @@ using gdu::set_index_4pt;
 void init_lookup_corr(const Correlator_list& correlator_list, 
                       const std::vector<Operator_list>& operator_list,
                       vec_pdg_Corr& lookup_corr, vec_pd_VdaggerV& lookup_vdv,
-                      vec_pd_rVdaggerVr& lookup_rvdvr, size_t index_of_unity) {
+                      vec_pd_rVdaggerVr& lookup_rvdvr, int& index_of_unity) {
 
   // extracting all operators which are used in correlations functions
   std::vector<int> used_operators;
@@ -90,6 +90,7 @@ void init_lookup_corr(const Correlator_list& correlator_list,
   // final setting lookuptables for vdaggerv and so on
   set_index_corr(lookup_corr, lookup_vdv, lookup_rvdvr);
 
+  index_of_unity = -1;
   // setting index_of_unity
   pdg zero;
   for(auto& mom : zero.p3)
@@ -234,8 +235,8 @@ void init_lookup_C2plus_IO(const Correlator_list& correlator_list,
   }
 
   std::cout << "lookup_2pt_IO" << std::endl;
-  for(const auto& a : lookup_2pt_IO){
-    for(const auto& b : a.index_pt)
+  for(auto& a : lookup_2pt_IO){
+    for(auto& b : a.index_pt)
       std::cout << a.id << "\t" << b << std::endl;
     std::cout << std::endl;
   }

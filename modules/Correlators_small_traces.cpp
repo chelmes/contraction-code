@@ -47,7 +47,6 @@ void LapH::Correlators::build_Corr(){
           // build all 2pt traces leading to C2_mes
           // Corr = tr(D_d^-1(t_sink) Gamma D_u^-1(t_source) Gamma)
           // TODO: Just a workaround
-          
           compute_meson_small_traces(id_Corr, basic.get_operator
             (t_source, t_sink/dilT, 1, id_Q2, rnd_it.first, rnd_it.second),
             vdaggerv.return_rvdaggervr(op_Corr[id_Corr].id_rvdvr, t_sink, 
@@ -81,25 +80,39 @@ void LapH::Correlators::build_Corr(){
 //calculate tr(2pt function). Only diagonal blocks are needed.
 // Corr = tr(D_d^-1(t_sink) Gamma D_u^-1(t_source) Gamma)
 
+//void LapH::Correlators::compute_meson_small_traces(const size_t id_si, 
+//                                             const Eigen::MatrixXcd& Q2,
+//                                             const Eigen::MatrixXcd& rVdaggerVr,
+//                                             cmplx& Corr) {
+//
+//  const std::vector<quark> quarks = global_data->get_quarks();
+//  const size_t dilE = quarks[0].number_of_dilution_E;
+//
+//  for(size_t block = 0; block < 4; block++){
+//
+//    cmplx value = 1;
+//    basic.value_dirac(id_si, block, value);
+//
+//    Corr += value * (Q2.block(block*dilE, block*dilE, dilE, dilE) *
+//            rVdaggerVr.block(0, (basic.order_dirac(id_si, block)*dilE), 
+//            dilE, dilE)).trace();
+//    }
+//}
 void LapH::Correlators::compute_meson_small_traces(const size_t id_si, 
-                                             const Eigen::MatrixXcd& Q2,
-                                             const Eigen::MatrixXcd& rVdaggerVr,
-                                             cmplx& Corr) {
-
+                                                   const Eigen::MatrixXcd& Q2,
+                                                   const Eigen::MatrixXcd& rVdaggerVr,
+                                                   cmplx& Q2_trace) {
   const std::vector<quark> quarks = global_data->get_quarks();
   const size_t dilE = quarks[0].number_of_dilution_E;
-
   for(size_t block = 0; block < 4; block++){
-
-    cmplx value = 1;
+    cmplx value = 1.;
     basic.value_dirac(id_si, block, value);
-
-    Corr += value * (Q2.block(block*dilE, block*dilE, dilE, dilE) *
-            rVdaggerVr.block(0, (basic.order_dirac(id_si, block)*dilE), 
-            dilE, dilE)).trace();
-    }
+    Q2_trace += value * (Q2.block(block*dilE, basic.order_dirac(id_si, block)*dilE, dilE, dilE) *
+                        rVdaggerVr.block(block*dilE, basic.order_dirac(id_si, block)*dilE, 
+                        dilE, dilE)).trace();
+    //std::cout << "value: " << value << " block: " << block << " block_ro: " << basic.order_dirac(id_si, block) << std::endl;
+  }
 }
-
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
@@ -135,6 +148,12 @@ void LapH::Correlators::build_and_write_2pt(const size_t config_i){
   if(op_C2_IO.size() == 0)
     return;
 
+  std::cout << "lookup_2pt_IO" << std::endl;
+  for(auto& a : op_C2_IO){
+    for(auto& b : a.index_pt)
+      std::cout << a.id << "\t" << b << std::endl;
+    std::cout << std::endl;
+  }
   for(int t_source = 0; t_source < Lt; ++t_source){
   for(int t_sink = 0; t_sink < Lt; ++t_sink){
 
@@ -142,6 +161,7 @@ void LapH::Correlators::build_and_write_2pt(const size_t config_i){
     for(const auto& i : op.index_pt){
       size_t id_Q2 = op_C2[i].index_Q2;
       size_t id_Corr = op_C2[i].index_Corr;
+      //std::cout << op.id << " " << i << " " <<  id_Q2 << " " << id_Corr << std::endl;
 
       for(const auto& rnd : rnd_vec_index) {
         C2_mes[op.id][abs((t_sink - t_source - Lt) % Lt)] += 
