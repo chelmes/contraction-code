@@ -47,13 +47,22 @@ void LapH::Correlators::build_Corr(){
           // build all 2pt traces leading to C2_mes
           // Corr = tr(D_d^-1(t_sink) Gamma D_u^-1(t_source) Gamma)
           // TODO: Just a workaround
+         // compute_meson_small_traces(id_Corr,
+         //                            basic.get_operator(t_source, t_sink/dilT,
+         //                                1, id_Q2, rnd_it.first,
+         //                                rnd_it.second),
+         //                            vdaggerv.return_rvdaggervr(
+         //                                op_Corr[id_Corr].id_rvdvr, t_sink, 
+         //                                rnd_it.second, rnd_it.first),
+         //                            Corr[id_Q2][id_Corr][t_source][t_sink]
+         //                                [rnd_it.first][rnd_it.second]);
           compute_meson_small_traces(id_Corr,
                                      basic.get_operator(t_source, t_sink/dilT,
                                          1, id_Q2, rnd_it.first,
                                          rnd_it.second),
-                                     vdaggerv.return_rvdaggervr(
+                                     (vdaggerv.return_rvdaggervr(
                                          op_Corr[id_Corr].id_rvdvr, t_sink, 
-                                         rnd_it.second, rnd_it.first),
+                                         rnd_it.first, rnd_it.second)).adjoint(),
                                      Corr[id_Q2][id_Corr][t_source][t_sink]
                                          [rnd_it.first][rnd_it.second]);
 

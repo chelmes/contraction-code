@@ -114,59 +114,62 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
             Eigen::MatrixXcd::Zero(nb_ev, nb_ev));
 
 #pragma omp parallel
-{
-  Eigen::VectorXcd mom = Eigen::VectorXcd::Zero(dim_row);
-  LapH::EigenVector V_t(1, dim_row, nb_ev);// each thread needs its own copy
-  GaugeField gauge(0, Lt, dim_row/3, 4);
-  gauge.init(Lx, Ly, Lz);
-  gauge.read_gauge_field(config_i, 0, Lt);
-  #pragma omp for schedule(dynamic)
-  for(size_t t = 0; t < Lt; ++t){
- 
-    gauge.smearing_hyp(t, 0.62, 0.62, 3); 
-    // TODO: Zero momentum is hard coded at the moment
-
-    read_eigenvectors_from_file(V_t, config_i, t);
-    // VdaggerV is independent of the gamma structure and momenta connected by
-    // sign flip are related by adjoining VdaggerV. Thus the expensive 
-    // calculation must only be performed for a subset of quantum numbers given
-    // in op_VdaggerV.
-    for(const auto& op : op_VdaggerV){
-
-      // For zero momentum and displacement VdaggerV is the unit matrix, thus
-      // the calculation is not performed
-      //std::cout << op.index << std::endl;
-      if(op.index != id_unity){
-        // check whether displacement is wanted and determine the direction
-        // (parallel to gamma)
-        size_t dir = 0;
-        //TODO: Order of displacements matters
-        //TODO: At the moment only support for d > 0!!!!
-        Eigen::MatrixXcd W_t = V_t[0];
-        for(auto& d : op_Corr[op.index].dis3){ 
-          if(d > 0){
-            // displace d times in direction dir
-            for(size_t nb_derv_one_dir = 0; nb_derv_one_dir < d; nb_derv_one_dir++){ 
-              // LapH::EigenVector W_t(1,dim_row, nb_ev);
-              if(nb_derv_one_dir == 0)
-                W_t = gauge.disp(V_t[0], t, dir, true);
-              else
-                W_t = gauge.disp(W_t, t, dir, true);
+  {
+    Eigen::VectorXcd mom = Eigen::VectorXcd::Zero(dim_row);
+    LapH::EigenVector V_t(1, dim_row, nb_ev);// each thread needs its own copy
+    GaugeField gauge(0, Lt, dim_row/3, 4);
+    gauge.init(Lx, Ly, Lz);
+    gauge.read_gauge_field(config_i, 0, Lt);
+    #pragma omp for schedule(dynamic)
+    for(size_t t = 0; t < Lt; ++t){
+   
+    gauge.smearing_hyp(t, 0.62, 0.58, 3);
+      // TODO: Zero momentum is hard coded at the moment
+  
+      read_eigenvectors_from_file(V_t, config_i, t);
+      // VdaggerV is independent of the gamma structure and momenta connected by
+      // sign flip are related by adjoining VdaggerV. Thus the expensive 
+      // calculation must only be performed for a subset of quantum numbers given
+      // in op_VdaggerV.
+      for(const auto& op : op_VdaggerV){
+  
+        // For zero momentum and displacement VdaggerV is the unit matrix, thus
+        // the calculation is not performed
+        //std::cout << op.index << std::endl;
+        if(op.index != id_unity){
+          // check whether displacement is wanted and determine the direction
+          // (parallel to gamma)
+          size_t dir = 0;
+          //TODO: Order of displacements matters
+          //TODO: At the moment only support for d > 0!!!!
+          Eigen::MatrixXcd W_t = V_t[0];
+          for(auto& d : op_Corr[op.index].dis3){ 
+            if(d > 0){
+              // displace d times in direction dir
+              for(size_t nb_derv_one_dir = 0; nb_derv_one_dir < d; nb_derv_one_dir++){ 
+                // LapH::EigenVector W_t(1,dim_row, nb_ev);
+               // std::cout << "der: " << nb_derv_one_dir << " dir: " << dir << std::endl;
+                if(nb_derv_one_dir == 0)
+                  W_t = gauge.disp(V_t[0], t, dir, true);
+                else{
+                  W_t = gauge.disp(W_t, t, dir, true);
+                }
+              }
             }
+            dir++;
           }
-          dir++;
+          vdaggerv[op.id][t] = V_t[0].adjoint() * W_t;
+        //  std::cout << vdaggerv[op.id][t].trace() << std::endl;
+         // Eigen::MatrixXcd Trash = vdaggerv[op.id][t].adjoint();
+         // vdaggerv[op.id][t] -= Trash; 
         }
-        vdaggerv[op.id][t] = V_t[0].adjoint() * W_t;
-       // Eigen::MatrixXcd Trash = vdaggerv[op.id][t].adjoint();
-       // vdaggerv[op.id][t] -= Trash; 
-      }
-      else{
-        // zero momentum and no displacement
-        (vdaggerv[op.id][t]) = Eigen::MatrixXcd::Identity(nb_ev, nb_ev);
-      }
-    } // loop over operators  
-  } // loop over time
-}// pragma omp parallel ends here
+        else{
+          // zero momentum and no displacement
+          (vdaggerv[op.id][t]) = Eigen::MatrixXcd::Identity(nb_ev, nb_ev);
+        }
+      } // loop over operators  
+    } // loop over time
+  }// pragma omp parallel ends here
 
   // set flag that vdaggerv is set
   is_vdaggerv_set = true;

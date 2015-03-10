@@ -6,7 +6,7 @@ GaugeField::GaugeField(const size_t t0, const size_t tf, const size_t v3,
                       const size_t ndir) : tslices(),
                                            iup(boost::extents[v3][ndir]),
                                            idown(boost::extents[v3][ndir]) {
-  tslices.resize(tf-t0+1);
+  tslices.resize(tf-t0);
   for(auto& t: tslices) t.resize(boost::extents[v3][ndir]);
 
 }
@@ -120,7 +120,13 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
           Eigen::Map<Eigen::Matrix3cd> dummy(array);
           //spatial index
           int ind = z*L2*L1+y*L1+x;
+          //TODO: Make dependant of OMP Threads!
+         // if(tslices.size()==1){
+         //   tslices.at(0)[ind][mu-1] = dummy;
+         // }
+         // else{
            tslices.at(t)[ind][mu-1] = dummy;
+         // }
         }
       }
     }
@@ -417,6 +423,52 @@ void GaugeField::smearing_hyp( const size_t t, const double alpha_1, const doubl
 ///Displacement routines, returning one Eigenvector/Eigensystem////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
+////Derivative, toogle symmetrization via sym
+//Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
+//                                     const size_t t, const size_t dir, bool sym ) {
+//  //parameter passing still to be improved
+//  const int LX = global_data -> get_Lx();
+//  const int LY = global_data -> get_Ly();
+//  const int LZ = global_data -> get_Lz();
+//  const int V3 = LX * LY * LZ;
+//
+//  //Information on Matrix size
+//  const int dim_row = V3*3;
+//  const int dim_col = v.cols();
+//  //Loop over all eigenvectors in 
+//    //storing eigenvector
+//    Eigen::VectorXcd in(dim_row);
+//    Eigen::MatrixXcd out(dim_row, dim_col);
+//  for(int ev=0; ev < dim_col; ++ev){ 
+//    in = v.col(ev);
+//
+//    //Displace eigenvector
+//    for (int spatial_ind = 0; spatial_ind < V3; ++spatial_ind) {
+//      //std::cout << "x: " << spatial_ind << std::endl;
+//      Eigen::Vector3cd tmp;
+//      Eigen::Vector3cd quark_up;
+//      Eigen::Vector3cd quark_down;
+//
+//      //determine needed indices from lookup tables;
+//      int up_ind = iup[spatial_ind][dir];
+//      int down_ind = idown[spatial_ind][dir];
+//
+//      quark_up = in.segment(3*up_ind,3);
+//      quark_down = in.segment(3*down_ind,3);
+//      if(sym) {
+//        tmp = 0.5 * ( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
+//            ( ( (tslices.at(t))[down_ind][dir].adjoint() ) * quark_down) ); 
+//      }
+//      else { 
+//        Eigen::Vector3cd quark_point = in.segment(3*spatial_ind,3);
+//        tmp = ( (tslices.at(t))[spatial_ind][dir] * quark_up) - quark_point ;
+//      }
+//      (out.col(ev)).segment(3*spatial_ind,3) = tmp;
+//    }//end spatial loop
+//  }//end eigenvector loop
+//  return out;
+//}
+
 //Derivative, toogle symmetrization via sym
 Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
                                      const size_t t, const size_t dir, bool sym ) {
@@ -429,39 +481,35 @@ Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
   //Information on Matrix size
   const int dim_row = V3*3;
   const int dim_col = v.cols();
-  //Loop over all eigenvectors in 
-    //storing eigenvector
-    Eigen::VectorXcd in(dim_row);
-    Eigen::MatrixXcd out(dim_row, dim_col);
-  for(int ev=0; ev < dim_col; ++ev){ 
-    in = v.col(ev);
-
-    //Displace eigenvector
+    Eigen::MatrixXcd out;
+    //blockwise Calculation seems much more efficient than looping over the
+    //eigenvectors
+    //Displace eigenmatrix blockwise
     for (int spatial_ind = 0; spatial_ind < V3; ++spatial_ind) {
       //std::cout << "x: " << spatial_ind << std::endl;
-      Eigen::Vector3cd tmp;
-      Eigen::Vector3cd quark_up;
-      Eigen::Vector3cd quark_down;
+      Eigen::MatrixXcd tmp;
+      Eigen::MatrixXcd quark_up;
+      Eigen::MatrixXcd quark_down;
 
       //determine needed indices from lookup tables;
       int up_ind = iup[spatial_ind][dir];
       int down_ind = idown[spatial_ind][dir];
 
-      quark_up = in.segment(3*up_ind,3);
-      quark_down = in.segment(3*down_ind,3);
+      quark_up = v.block(3*up_ind,0,3,dim_col);
+      quark_down = v.block(3*down_ind,0,3,dim_col);
       if(sym) {
         tmp = 0.5 * ( ( (tslices.at(t))[spatial_ind][dir] * quark_up) - 
             ( ( (tslices.at(t))[down_ind][dir].adjoint() ) * quark_down) ); 
       }
       else { 
-        Eigen::Vector3cd quark_point = in.segment(3*spatial_ind,3);
+        Eigen::MatrixXcd quark_point = v.block(3*spatial_ind,0,3,dim_col);
         tmp = ( (tslices.at(t))[spatial_ind][dir] * quark_up) - quark_point ;
       }
-      (out.col(ev)).segment(3*spatial_ind,3) = tmp;
+      out.block(3*spatial_ind,0,3,dim_col) = tmp;
     }//end spatial loop
-  }//end eigenvector loop
   return out;
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 ///Gaugefield transformations//////////////////////////////////////////////////
@@ -590,13 +638,15 @@ void GaugeField::read_gauge_field(const size_t config_i, const size_t slice_i,
   double* configuration = new double[vol4];
   read_lime_gauge_field_doubleprec_timeslices(configuration, filename,
                                               slice_i, slice_f);
-  for (auto t = slice_i; t <= slice_f; ++t) {
+  for (auto t = slice_i; t < slice_f; ++t) {
     double* timeslice = configuration + V_TS*t;
     map_timeslice_to_eigen(t, timeslice);
+   // std::cout << "Timeslice: " << t << std::endl;
+   // std::cout << std::setprecision(10) << tslices.at(t)[0][0] << "\n" << std::endl;
   }   
   delete[] configuration;
   if(verbose){
-    std::cout << slice_f+1-slice_i << " timeslice(s) read in from config " << config_i 
+    std::cout << slice_f-slice_i << " timeslice(s) read in from config " << config_i 
               << std::endl;
   }
 }
