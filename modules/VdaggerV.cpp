@@ -14,7 +14,6 @@ inline void read_eigenvectors_from_file(LapH::EigenVector& V,
   std::string filename = global_data->get_path_eigenvectors() + "/"
       + global_data->get_name_eigenvectors();
   sprintf(name, "%s.%04d.%03d", filename.c_str(), config_i, t);
-
   V.read_eigen_vector(name, 0, 0);
 }
 
@@ -123,7 +122,7 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
     #pragma omp for schedule(dynamic)
     for(size_t t = 0; t < Lt; ++t){
    
-    gauge.smearing_hyp(t, 0.62, 0.58, 3);
+      gauge.smearing_hyp(t, 0.62, 0.62, 3);
       // TODO: Zero momentum is hard coded at the moment
   
       read_eigenvectors_from_file(V_t, config_i, t);

@@ -481,7 +481,7 @@ Eigen::MatrixXcd GaugeField::disp(const Eigen::MatrixXcd& v,
   //Information on Matrix size
   const int dim_row = V3*3;
   const int dim_col = v.cols();
-    Eigen::MatrixXcd out;
+    Eigen::MatrixXcd out(dim_row,dim_col);
     //blockwise Calculation seems much more efficient than looping over the
     //eigenvectors
     //Displace eigenmatrix blockwise
