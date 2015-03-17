@@ -116,13 +116,16 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
   {
     Eigen::VectorXcd mom = Eigen::VectorXcd::Zero(dim_row);
     LapH::EigenVector V_t(1, dim_row, nb_ev);// each thread needs its own copy
-    GaugeField gauge(0, Lt, dim_row/3, 4);
-    gauge.init(Lx, Ly, Lz);
-    gauge.read_gauge_field(config_i, 0, Lt);
     #pragma omp for schedule(dynamic)
     for(size_t t = 0; t < Lt; ++t){
-   
-      gauge.smearing_hyp(t, 0.62, 0.62, 3);
+      // openmp requires one instance of GaugeField per thread to avoid race
+      // conditions
+      GaugeField gauge(0, 1, dim_row/3, 4);
+      gauge.init(Lx, Ly, Lz);
+      gauge.read_gauge_field(config_i, t, t);
+      //std::cout << std::setprecision(10) << "before hyp: " << gauge(0,0,1) << "\n" << std::endl;
+      gauge.smearing_hyp(0, 0.62, 0.62, 3);
+      //std::cout << std::setprecision(10) <<"after hyp: " <<gauge(0,0,1) <<"\n"<< std::endl;
       // TODO: Zero momentum is hard coded at the moment
   
       read_eigenvectors_from_file(V_t, config_i, t);
@@ -149,9 +152,9 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
                 // LapH::EigenVector W_t(1,dim_row, nb_ev);
                // std::cout << "der: " << nb_derv_one_dir << " dir: " << dir << std::endl;
                 if(nb_derv_one_dir == 0)
-                  W_t = gauge.disp(V_t[0], t, dir, true);
+                  W_t = gauge.disp(V_t[0], 0, dir, true);
                 else{
-                  W_t = gauge.disp(W_t, t, dir, true);
+                  W_t = gauge.disp(W_t, 0, dir, true);
                 }
               }
             }
@@ -166,7 +169,8 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
           // zero momentum and no displacement
           (vdaggerv[op.id][t]) = Eigen::MatrixXcd::Identity(nb_ev, nb_ev);
         }
-      } // loop over operators  
+        //std::cout << vdaggerv[op.id][t].block(0,0,6,6) << "\n" << std::endl;
+      } // loop over operators 
     } // loop over time
   }// pragma omp parallel ends here
 

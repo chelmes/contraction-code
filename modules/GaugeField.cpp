@@ -121,12 +121,12 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
           //spatial index
           int ind = z*L2*L1+y*L1+x;
           //TODO: Make dependant of OMP Threads!
-         // if(tslices.size()==1){
-         //   tslices.at(0)[ind][mu-1] = dummy;
-         // }
-         // else{
-           tslices.at(t)[ind][mu-1] = dummy;
-         // }
+          //if(tslices.size()==1){
+            tslices.at(0)[ind][mu-1] = dummy;
+          //}
+          //else{
+          // tslices.at(t)[ind][mu-1] = dummy;
+          //}
         }
       }
     }
@@ -638,11 +638,13 @@ void GaugeField::read_gauge_field(const size_t config_i, const size_t slice_i,
   double* configuration = new double[vol4];
   read_lime_gauge_field_doubleprec_timeslices(configuration, filename,
                                               slice_i, slice_f);
-  for (auto t = slice_i; t < slice_f; ++t) {
-    double* timeslice = configuration + V_TS*t;
-    map_timeslice_to_eigen(t, timeslice);
-   // std::cout << "Timeslice: " << t << std::endl;
-   // std::cout << std::setprecision(10) << tslices.at(t)[0][0] << "\n" << std::endl;
+  for (auto t = slice_i; t <= slice_f; ++t) {
+    // Only read in one timeslice for OMP
+    double* timeslice = configuration + V_TS*(t-slice_i);
+    //TODO: make dependant of OMP threads. At the moment implemented for OMP
+    map_timeslice_to_eigen(0, timeslice);
+    //std::cout << "Timeslice: " << t << std::endl;
+    //std::cout << std::setprecision(10) << tslices.at(t)[0][0] << "\n" << std::endl;
   }   
   delete[] configuration;
   if(verbose){
