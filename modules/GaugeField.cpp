@@ -80,7 +80,8 @@ int GaugeField::get_dn(const int pos, const int dir){
 ///////////////////////////////////////////////////////////////////////////////
 
 //mapping from gauge config to Eigen 3x3 complex matrix arrays
-void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice) {
+void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice,
+                                        size_t omp_max) {
   int L1 = global_data->get_Lx();
   int L2 = global_data->get_Ly();
   int L3 = global_data->get_Lz();
@@ -120,13 +121,13 @@ void GaugeField::map_timeslice_to_eigen(const size_t t, const double* timeslice)
           Eigen::Map<Eigen::Matrix3cd> dummy(array);
           //spatial index
           int ind = z*L2*L1+y*L1+x;
-          //TODO: Make dependant of OMP Threads!
-          //if(tslices.size()==1){
+          //dependance on Maximum OMP Threads
+          if(omp_max > 1){
             tslices.at(0)[ind][mu-1] = dummy;
-          //}
-          //else{
-          // tslices.at(t)[ind][mu-1] = dummy;
-          //}
+          }
+          else{
+            tslices.at(t)[ind][mu-1] = dummy;
+          }
         }
       }
     }
@@ -630,6 +631,7 @@ double GaugeField::plaque_ts(const size_t t){
 void GaugeField::read_gauge_field(const size_t config_i, const size_t slice_i,
                                   const size_t slice_f){
   const int verbose = global_data -> get_verbose();
+  size_t omp_max = omp_get_max_threads();
   char filename[200];
   std::string name = global_data->get_config_path()+"/conf";
   sprintf(filename,"%s.%04d", name.c_str(), config_i);
@@ -641,8 +643,8 @@ void GaugeField::read_gauge_field(const size_t config_i, const size_t slice_i,
   for (auto t = slice_i; t <= slice_f; ++t) {
     // Only read in one timeslice for OMP
     double* timeslice = configuration + V_TS*(t-slice_i);
-    //TODO: make dependant of OMP threads. At the moment implemented for OMP
-    map_timeslice_to_eigen(0, timeslice);
+    
+    map_timeslice_to_eigen(0, timeslice, omp_max);
     //std::cout << "Timeslice: " << t << std::endl;
     //std::cout << std::setprecision(10) << tslices.at(t)[0][0] << "\n" << std::endl;
   }   

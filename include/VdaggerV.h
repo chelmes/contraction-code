@@ -34,7 +34,7 @@ private:
 //  size_t nb_mom;
   bool is_vdaggerv_set;
   void create_momenta();
-
+  void create_dis_momenta();
 public:
   VdaggerV ();
   ~VdaggerV () {};

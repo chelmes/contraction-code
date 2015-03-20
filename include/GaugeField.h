@@ -31,6 +31,7 @@
 //#include "Eigen/Core"
 //#include "Eigen/SparseCore"
 #include "boost/multi_array.hpp" 
+#include "omp.h"
 
 //#include "lime.h"
 #include "config_utils.h"
@@ -132,9 +133,10 @@ class GaugeField {
   
     //! \brief project one timeslice of lime Gaugefield to 3d timeslice
     //!
-    //! t is the timeslice to be mapped timeslice points to the array of the
-    //! lime Gaugefield.
-    void map_timeslice_to_eigen(const size_t t, const double* timeslice);
+    //! t is the index of the timeslice to be mapped timeslice points to the array of the
+    //! lime Gaugefield. omp_max is used to decide how to map in dependence of
+    //! OpenMP usage
+    void map_timeslice_to_eigen(const size_t t, const double* timeslice, const size_t omp_max);
 
     //! \brief tmlQCD function to read in gaugefields to array of doubles
     //!

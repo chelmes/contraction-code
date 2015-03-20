@@ -46,7 +46,7 @@ LapH::VdaggerV::VdaggerV() : vdaggerv(), rvdaggervr(), momentum(),
   // the momenta only need to be calculated for a subset of quantum numbers
   // (see VdaggerV::build_vdaggerv)
   momentum.resize(boost::extents[op_VdaggerV.size()][Vs]);
-  create_momenta();
+  create_dis_momenta();
 
 }
 /******************************************************************************/
@@ -92,6 +92,48 @@ void LapH::VdaggerV::create_momenta () {
 /******************************************************************************/
 /******************************************************************************/
 /******************************************************************************/
+void LapH::VdaggerV::create_dis_momenta () {
+
+  const int Lx = global_data->get_Lx();
+  const int Ly = global_data->get_Ly();
+  const int Lz = global_data->get_Lz();
+
+  const vec_pd_VdaggerV op_VdaggerV = global_data->get_lookup_VdaggerV();
+  const vec_pdg_Corr op_Corr = global_data->get_lookup_corr();
+
+  static const std::complex<double> I(0.0, 1.0);
+
+  // To calculate Vdagger exp(i*p*(x+0.5D)) DV only the momenta corresponding to the
+  // quantum number id in op_VdaggerV will be used. The rest can be obtained
+  // by adjoining
+  for(const auto& op : op_VdaggerV){
+    // Get displacement 3 vector from op_Corr
+    std::array<int,3> d = op_Corr[op.index].dis3;
+    for (auto& d_i : d ) std::cout << d_i << std::endl;
+    // op_VdaggerV contains the index of one (redundancy) op_Corr which
+    // allows to deduce the quantum numbers (momentum)
+    const double ipx = op_Corr[op.index].p3[0] * 2. * M_PI / (double) Lx; 
+    const double ipy = op_Corr[op.index].p3[1] * 2. * M_PI / (double) Ly;
+    const double ipz = op_Corr[op.index].p3[2] * 2. * M_PI / (double) Lz;
+
+    // calculate \vec{p} \cdot \vec{x+d} for all \vec{x} on the lattice
+    for(int x = 0; x < Lx; ++x){
+      const int xH = x * Ly * Lz; // helper variable
+      const double ipxH = ipx * (x+d[0]); // helper variable
+      for(int y = 0; y < Ly; ++y){
+        const int xHyH = xH + y * Lz; // helper variable
+        const double ipxHipyH = ipxH + ipy * (y+d[1]); // helper variable
+        for(int z = 0; z < Lz; ++z){
+          // multiply \vec{p} \cdot \vec{x} with complex unit and exponentiate
+          momentum[op.id][xHyH + z] = exp(-I * (ipxHipyH + ipz * (z+d[2])));
+    }}}//loops over spatial vectors end here
+  }//loop over redundant quantum numbers ends here
+
+}
+
+/******************************************************************************/
+/******************************************************************************/
+/******************************************************************************/
 void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 
   clock_t t2 = clock();
@@ -123,10 +165,7 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
       GaugeField gauge(0, 1, dim_row/3, 4);
       gauge.init(Lx, Ly, Lz);
       gauge.read_gauge_field(config_i, t, t);
-      //std::cout << std::setprecision(10) << "before hyp: " << gauge(0,0,1) << "\n" << std::endl;
       gauge.smearing_hyp(0, 0.62, 0.62, 3);
-      //std::cout << std::setprecision(10) <<"after hyp: " <<gauge(0,0,1) <<"\n"<< std::endl;
-      // TODO: Zero momentum is hard coded at the moment
   
       read_eigenvectors_from_file(V_t, config_i, t);
       // VdaggerV is independent of the gamma structure and momenta connected by
@@ -137,8 +176,12 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
   
         // For zero momentum and displacement VdaggerV is the unit matrix, thus
         // the calculation is not performed
-        //std::cout << op.index << std::endl;
         if(op.index != id_unity){
+          // momentum vector contains exp(-i p x). Divisor 3 for colour index. 
+          // All three colours on same lattice site get the same momentum.
+          for(size_t x = 0; x < dim_row; ++x) {
+            mom(x) = momentum[op.id][x/3];
+          }
           // check whether displacement is wanted and determine the direction
           // (parallel to gamma)
           size_t dir = 0;
@@ -149,8 +192,6 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
             if(d > 0){
               // displace d times in direction dir
               for(size_t nb_derv_one_dir = 0; nb_derv_one_dir < d; nb_derv_one_dir++){ 
-                // LapH::EigenVector W_t(1,dim_row, nb_ev);
-               // std::cout << "der: " << nb_derv_one_dir << " dir: " << dir << std::endl;
                 if(nb_derv_one_dir == 0)
                   W_t = gauge.disp(V_t[0], 0, dir, true);
                 else{
@@ -160,16 +201,12 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
             }
             dir++;
           }
-          vdaggerv[op.id][t] = V_t[0].adjoint() * W_t;
-        //  std::cout << vdaggerv[op.id][t].trace() << std::endl;
-         // Eigen::MatrixXcd Trash = vdaggerv[op.id][t].adjoint();
-         // vdaggerv[op.id][t] -= Trash; 
+          vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * W_t;
         }
         else{
           // zero momentum and no displacement
           (vdaggerv[op.id][t]) = Eigen::MatrixXcd::Identity(nb_ev, nb_ev);
         }
-        //std::cout << vdaggerv[op.id][t].block(0,0,6,6) << "\n" << std::endl;
       } // loop over operators 
     } // loop over time
   }// pragma omp parallel ends here
