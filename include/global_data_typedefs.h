@@ -13,7 +13,7 @@
 // *****************************************************************************
 // *****************************************************************************
 // *****************************************************************************
-/// @brief quark type that contains all quark propagator informations
+/// @brief quark type that contains all quark propagator information
 struct quark {
 
 	std::string type;
@@ -38,25 +38,28 @@ struct quark {
 // *****************************************************************************
 // *****************************************************************************
 // *****************************************************************************
-/// @brief operator type that contains all operator informations
+/// @brief operator type that contains all operator information
 struct Operators {
 
 public: // TODO: should be changed to private at a later point
   std::vector<int> gammas;
-  std::array<int, 3> dil_vec;
+  // one displacement vector gets a
+  // char indicating whether (l)eft, (r)ight or (s)ymmetric displacement is wanted
+  std::vector<disp> dis_vec;
+  //std::array<int, 3> dil_vec;
   std::vector< std::vector<std::array<int, 3> > > mom_vec;
 
 public:
 	/// @brief Constructor.
-	Operators (std::vector<int> gammas, std::array<int, 3> dil_vec, 
+	Operators (std::vector<int> gammas, std::vector<disp> dis_vec, 
              std::vector<std::vector<std::array<int, 3> > > mom_vec) :
-                           gammas(gammas), dil_vec(dil_vec), mom_vec(mom_vec) {}
+                           gammas(gammas), dis_vec(dis_vec), mom_vec(mom_vec) {}
 
 };
 // *****************************************************************************
 // *****************************************************************************
 // *****************************************************************************
-/// @brief correlator type that contains all correlator informations
+/// @brief correlator type that contains all correlator information
 struct Correlators {
 
 public: // TODO: should be changed to private at a later point

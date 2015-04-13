@@ -50,6 +50,8 @@ typedef std::list<std::array<size_t, 4> > indexlist_4;
 
 // Operator typedefs
 
+typedef std::pair<char,std::array<size_t,3> > disp;
+
 // struct which contains all desired combinations of quantum numbers. pdg means
 // momentum/displacement/gamma structure
 // id    - allows to restore the physical content from the internally used id
@@ -68,6 +70,7 @@ typedef std::list<std::array<size_t, 4> > indexlist_4;
 //         is 1 for the first combination and 0 else and will be checked
 //         in BasicOperator::init_operator
 // id_rVdaggerVr - like id_VdaggerV, but all momenta are saved
+// slr   - integer determining if displacement is symmetric (0), left(-1) or right(1)
 
   struct pdg{
     size_t id;
@@ -78,6 +81,7 @@ typedef std::list<std::array<size_t, 4> > indexlist_4;
     bool first_vdv;
     bool negative_momentum;
     size_t id_rvdvr;
+    char slr;
   };
 
 // struct which contains all id's from pdg for which VdaggerV is not 

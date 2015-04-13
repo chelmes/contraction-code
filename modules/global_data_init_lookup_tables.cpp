@@ -36,7 +36,8 @@ void init_lookup_corr(const Correlator_list& correlator_list,
     for(const auto& individual_operator : operator_list[op_entry]){
       pdg write;
       write.gamma = individual_operator.gammas;
-      write.dis3 = individual_operator.dil_vec;
+      write.dis3 = individual_operator.std::get<std::array<int,3> >(s);
+      write.slr = individual_operator.std::get<std::array<string>>
       for(const auto& mom_vec : individual_operator.mom_vec){
         for(auto mom : mom_vec){
           write.p3 = mom;

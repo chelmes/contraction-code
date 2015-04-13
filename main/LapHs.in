@@ -29,7 +29,7 @@ quark = u:5:TB:2:EI:6:DI:4
 
 # operators to be used
 [operator_lists]
-operator_list = g6.g1.d(1,0,0).p(0,1,0)
+operator_list = g6.g1.dr(1,0,0).p(0,1,0)
 #operator_list = g6.g2.d(1,0,0).p0
 #operator_list = g6.g3.d(1,0,0).p0
 #operator_list = g6.g1.d(0,1,0).p0

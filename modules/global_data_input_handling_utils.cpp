@@ -36,7 +36,9 @@ std::array<int, 3> create_3darray_from_string(std::string in) {
   std::array<int, 3> out;
   std::vector<std::string> tokens;
   // erasing the brakets at the beginning and the end
-  in.erase(0,2);
+  // depending on total length of string
+  if (in.length == 9) in.erase(0,3);
+  else in.erase(0,2);
   in.erase(in.end()-1);
 
   boost::split(tokens, in, boost::is_any_of(","));
@@ -177,7 +179,7 @@ Operator_list make_operator_list(const std::string& operator_string) {
     std::vector<std::string> tokens;
     boost::split(tokens, op_t, boost::is_any_of("."));
     std::vector<int> gammas;
-    std::array<int, 3> dil_vec;
+    disp dil_vec
     std::vector<std::vector<std::array<int, 3> > >mom_vec;
     for (auto str : tokens){
       // getting the gamma structure
@@ -187,8 +189,16 @@ Operator_list make_operator_list(const std::string& operator_string) {
       else if (str.compare(0,1,"d") == 0) {
         if(str.compare(1,1,"0") == 0)
           dil_vec = {{0, 0, 0}};
+        else if (str.compare(1,2,"s") == 0 || str.compare(1,2,"l") == 0 ||
+                 str.compare(1,2,"r") == 0){ 
+          std::get<0>(dil_vec) = str[1];
+          std::get<1>(dil_vec) = create_3darray_from_string(str.substr(2,3));
+        }
+        // TODO:Think about default displacement application
         else if (str.compare(1,1,"(") == 0)
-          dil_vec = create_3darray_from_string(str);
+          // set displacement to default value
+          std::get<0>(dil_vec) = "d";
+         std::get<1>(dil_vec) = create_3darray_from_string(str);
         else {
          std::cout << "Something wrong with the displacement in the operator" \
                       " definition" << std::endl;
