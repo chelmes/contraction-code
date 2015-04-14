@@ -201,7 +201,13 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
             }
             dir++;
           }
-          vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * W_t;
+          // Displace different quarks according to char 'slr', default is r
+          if (op_Corr[op.index].slr == 's')
+          vdaggerv[op.id][t] = W_t.adjoint() * mom.asDiagonal() * W_t;
+          else if (op_Corr[op.index].slr == 'r' || op_Corr[op.index].slr == 'd')
+            vdaggerv[op.id][t] = V_t[0].adjoint() * mom.asDiagonal() * W_t;
+          else if (op_Corr[op.index].slr == 'l')
+            vdaggerv[op.id][t] =  W_t.adjoint() * mom.asDiagonal()* V_t[0];
         }
         else{
           // zero momentum and no displacement

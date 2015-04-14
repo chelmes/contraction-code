@@ -37,11 +37,13 @@ std::array<int, 3> create_3darray_from_string(std::string in) {
   std::vector<std::string> tokens;
   // erasing the brakets at the beginning and the end
   // depending on total length of string
-  if (in.length() == 9) in.erase(0,3);
-  else in.erase(0,2);
+  //if (in.length() == 9) in.erase(0,3);
+  //else in.erase(0,2);
+  in.erase(0,2);
   in.erase(in.end()-1);
 
   boost::split(tokens, in, boost::is_any_of(","));
+  for (auto str : tokens) std::cout << str << std::endl;
 
   return {{boost::lexical_cast<int>(tokens[0]),
           boost::lexical_cast<int>(tokens[1]),
@@ -173,7 +175,7 @@ Operator_list make_operator_list(const std::string& operator_string) {
   // Tokenize the string on the ";" delimiter -> Individual operators
   std::vector<std::string> operator_tokens;
   boost::split(operator_tokens, operator_string, boost::is_any_of(":"));
-
+  std::cout << operator_string << std::endl;
   // running over opeator tokens and split them further (Step 2):
   for (const auto& op_t : operator_tokens){
     std::vector<std::string> tokens;
@@ -182,17 +184,19 @@ Operator_list make_operator_list(const std::string& operator_string) {
     disp dil_vec;
     std::vector<std::vector<std::array<int, 3> > >mom_vec;
     for (auto str : tokens){
+      std::cout << str << std::endl;
       // getting the gamma structure
-      if(str.compare(0,1,"g") == 0)
+      if(str.compare(0,1,"g") == 0){
         gammas.push_back(boost::lexical_cast<int>(str.erase(0,1)));
+      }
       // getting the displacement indices
       else if (str.compare(0,1,"d") == 0) {
         if(str.compare(1,1,"0") == 0)
           dil_vec.second = {{0, 0, 0}};
-        else if (str.compare(1,2,"s") == 0 || str.compare(1,2,"l") == 0 ||
-                 str.compare(1,2,"r") == 0){ 
-          std::get<0>(dil_vec) = str[1];
-          std::get<1>(dil_vec) = create_3darray_from_string(str.substr(2,3));
+        else if (str.compare(1,1,"s") == 0 || str.compare(1,1,"l") == 0 ||
+                 str.compare(1,1,"r") == 0){
+          // substr has to be taken to get according layout for transformation
+          dil_vec = std::make_pair(str[1], create_3darray_from_string(str.substr(1,8)) );
         }
         // TODO:Think about default displacement application
         else if (str.compare(1,1,"(") == 0)
@@ -204,7 +208,8 @@ Operator_list make_operator_list(const std::string& operator_string) {
                       " definition" << std::endl;
          exit(0);
         }
-      }
+        std::cout << dil_vec.second[0] << " " << dil_vec.second[0] << " " <<dil_vec.second[0] << std::endl;  
+    }
       // getting the momenta
       else if (str.compare(0,1,"p") == 0) {
         if(str.compare(1,1,"(") == 0){

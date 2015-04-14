@@ -157,6 +157,7 @@ void LapH::Correlators::build_and_write_2pt(const size_t config_i){
   // setting the correlation function to zero
   std::fill(C2_mes.origin(), C2_mes.origin() + C2_mes.num_elements() , 
                                                             cmplx(0.0, 0.0));
+  std::cout << op_C2_IO.size() << std::endl;
   if(op_C2_IO.size() == 0)
     return;
 
