@@ -79,7 +79,7 @@ bool compare_mom_dis_of_pdg(const pdg& in1, const pdg& in2){
 bool compare_quantum_numbers_of_pdg(const pdg& in1, const Operators& in2){
 
   if( in1.gamma == in2.gammas &&
-      in1.dis3 == in2.get<1>){
+      in1.dis3 == std::get<1>(in2.dis_vec)){
     for(const auto& mom_vec : in2.mom_vec){
       for(auto mom : mom_vec){
         if(in1.p3 == mom){

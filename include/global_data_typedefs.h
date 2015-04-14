@@ -45,13 +45,13 @@ public: // TODO: should be changed to private at a later point
   std::vector<int> gammas;
   // one displacement vector gets a
   // char indicating whether (l)eft, (r)ight or (s)ymmetric displacement is wanted
-  std::vector<disp> dis_vec;
+  disp dis_vec;
   //std::array<int, 3> dil_vec;
   std::vector< std::vector<std::array<int, 3> > > mom_vec;
 
 public:
 	/// @brief Constructor.
-	Operators (std::vector<int> gammas, std::vector<disp> dis_vec, 
+	Operators (std::vector<int> gammas, disp dis_vec, 
              std::vector<std::vector<std::array<int, 3> > > mom_vec) :
                            gammas(gammas), dis_vec(dis_vec), mom_vec(mom_vec) {}
 

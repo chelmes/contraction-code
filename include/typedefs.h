@@ -50,7 +50,7 @@ typedef std::list<std::array<size_t, 4> > indexlist_4;
 
 // Operator typedefs
 
-typedef std::pair<char,std::array<size_t,3> > disp;
+typedef std::pair<char,std::array<int,3> > disp;
 
 // struct which contains all desired combinations of quantum numbers. pdg means
 // momentum/displacement/gamma structure
