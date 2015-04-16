@@ -26,6 +26,7 @@ lattice = A40.20
 # quarks to be used
 [quarks]
 quark = u:5:TB:2:EI:6:DI:4
+quark = s:5:TB:2:EI:6:DI:4
 
 # operators to be used
 [operator_lists]
@@ -42,7 +43,7 @@ operator_list = g6.g1.dr(1,0,0).p(-1,0,0)
 
 # all correlation functions which will be computed !!MUST BE AT END OF FILE!!
 [correlator_lists]
-correlator_list = C2+:Q0:Op0:Q0:Op1
+correlator_list = C2+:Q0:Op0:Q1:Op1
 #correlator_list = C2+:Q0:Op0:Q0:Op1
 #correlator_list = C2+:Q0:Op0:Q0:Op2
 #correlator_list = C2+:Q0:Op1:Q0:Op0

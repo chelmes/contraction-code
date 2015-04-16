@@ -15,6 +15,34 @@ using gdu::set_index_corr;
 using gdu::set_index_2pt;
 using gdu::set_index_4pt;
 
+// Quark lookup table to associate quark content of diagrams with quantum
+// numbers
+void init_lookup_Q2(const Correlator_list& correlator_list,
+                    const std::vector<Operator_list>& operator_list,
+                    const std::vector<quark>& quarks,
+                    vec_pdgf_Q2& lookup_Q2){
+ 
+  // extracting all operators which are used in correlations functions
+  std::vector<std::pair> used_operators;
+  for(const auto& corr_list : correlator_list)
+    used_operators.insert(used_operators.end(), 
+                          corr_list.operator_numbers.begin(), 
+                          corr_list.operator_numbers.end());
+  
+  sort(used_operators.begin(), used_operators.end());
+  used_operators.erase(std::unique(used_operators.begin(), 
+                                   used_operators.end()),
+                       used_operators.end());
+  // write quark flavours in lookup_Q2, 
+  // set lookup_corr index
+  // delete doubles
+  // count through
+  for(const auto& op_entry : used_operators){
+    for(const auto& individual_operator : operator_list[op_entry]){
+    } 
+  }
+}
+
 void init_lookup_corr(const Correlator_list& correlator_list, 
                       const std::vector<Operator_list>& operator_list,
                       vec_pdg_Corr& lookup_corr, vec_pd_VdaggerV& lookup_vdv,

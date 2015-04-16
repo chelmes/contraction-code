@@ -84,6 +84,17 @@ typedef std::pair<char,std::array<int,3> > disp;
     char slr;
   };
 
+// struct containing the flavour (fl) as size_t (0 = l, 1 = s, 2 = c) and
+// lookup_corr index for reconstruction of quantum numbers 
+  struct pdgf{
+    // identifier
+    size_t id;
+    // index for lookup_corr
+    size_t id_pdg;
+    // quark flavour indices for vertices (at least 2)
+    std::vector<size_t> fl;
+  };
+
 // struct which contains all id's from pdg for which VdaggerV is not 
 // redundant. Only half the momenta and no gamma structure is contained
 // id    - number to reference VdaggerV
@@ -129,6 +140,7 @@ typedef std::pair<char,std::array<int,3> > disp;
   };
 
 typedef std::vector<pdg> vec_pdg_Corr;  
+typedef std::vector<pdgf> vec_pdgf_Q2;  
 typedef std::vector<pd> vec_pd_VdaggerV;
 typedef std::vector<pd_r> vec_pd_rVdaggerVr;
 typedef std::vector<index_2pt> vec_index_2pt;
