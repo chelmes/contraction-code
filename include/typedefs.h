@@ -89,9 +89,10 @@ typedef std::pair<char,std::array<int,3> > disp;
   struct pdgf{
     // identifier
     size_t id;
-    // index for lookup_corr
+    // index for lookup_corr used for accessing quantum numbers in operator
+    // initialization
     size_t id_pdg;
-    // quark flavour indices for vertices (at least 2)
+    // quark flavour indices for vertices
     std::vector<size_t> fl;
   };
 
@@ -140,7 +141,7 @@ typedef std::pair<char,std::array<int,3> > disp;
   };
 
 typedef std::vector<pdg> vec_pdg_Corr;  
-typedef std::vector<pdgf> vec_pdgf_Q2;  
+typedef std::vector<pdgf> vec_pdgf;  
 typedef std::vector<pd> vec_pd_VdaggerV;
 typedef std::vector<pd_r> vec_pd_rVdaggerVr;
 typedef std::vector<index_2pt> vec_index_2pt;

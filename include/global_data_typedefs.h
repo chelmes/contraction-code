@@ -63,6 +63,7 @@ public:
 struct Correlators {
 
 public: // TODO: should be changed to private at a later point
+  // Type of correlation function (C2+, C4,...)
   std::string type;
   std::vector<int> quark_numbers;
   std::vector<int> operator_numbers;
@@ -82,7 +83,6 @@ public:
 // *****************************************************************************
 // *****************************************************************************
 // *****************************************************************************
-typedef std::vector<Operators> Operator_list;
 typedef std::vector<Correlators> Correlator_list;
-
+typedef std::vector<Operators> Operator_list;
 #endif /* OPERATORS_H_ */
