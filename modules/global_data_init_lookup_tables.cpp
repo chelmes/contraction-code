@@ -20,55 +20,54 @@ using gdu::set_index_2pt;
 using gdu::set_index_4pt;
 
 // initialize lookup table associating 1 operator and n quark 
-void init_lookup_Q(const Correlator_list& correlator_list,
-                    const std::vector<Operator_list>& operator_list,
-                    const std::vector<quark>& quarks,
-                    const size_t n_quarks,
-                    vec_pdgf& lookup_Q){
- 
-  // extracting all operators which are used in correlations functions
-  std::vector<std::pair<int,int> > used_operators;
-  for(const auto& corr_list : correlator_list){
-  if (corr_list.operator_numbers.size() != corr_list.quark_numbers.size()){
-    std::cout << "LapHs.in: Syntax error: different quark and operator numbers in correlators not allowed!"<< std::endl;
-    exit(0);
-  }
-    for(auto i=0; i < corr_list.operator_numbers.size(); i++){
-      used_operators.push_back(std::make_pair(corr_list.operator_numbers[i],
-                                              corr_list.quark_numbers[i]));
-    } 
-  }
-  sort(used_operators.begin(), used_operators.end());
-  used_operators.erase(std::unique(used_operators.begin(), 
-                                   used_operators.end()),
-                       used_operators.end());
-  // delete doubles
-  // count through
-        pdgf write;
-  for(const auto& op_entry : used_operators){
-    for(const auto& individual_operator : operator_list[op_entry.first]){
-      for(const auto op : lookup_corr){
-        // long check to see if quantum numbers are right
-        if(op.gamma == individual_operator.gammas &&
-           op.dis3 == std::get<1>(individual_operator.dis_vec) &&
-           op.slr == std::get<0>(individual_operator.dis_vec) ) {
-          for(const auto& mom_vec : individual_operator.mom_vec){
-            for(auto mom : mom_vec){
-              if(op.p3 == mom)
-                // set id to access quantum numbers
-                write.id_pdg = op.id;
-          
-            }
-          }
-          // write quark flavours in lookup_Q, 
-          write.fl.push_back(op_entry.second);
-          // save pdgf to lookup table
-          lookup_Q.push_back(write);
-        }
-      }
-    } 
-  }
-}
+//void init_lookup_Q(const Correlator_list& correlator_list,
+//                    const std::vector<Operator_list>& operator_list,
+//                    const size_t n_quarks,
+//                    vec_pdgf& lookup_Q){
+// 
+//  // extracting all operators which are used in correlations functions
+//  std::vector<std::pair<int,int> > used_operators;
+//  for(const auto& corr_list : correlator_list){
+//  if (corr_list.operator_numbers.size() != corr_list.quark_numbers.size()){
+//    std::cout << "LapHs.in: Syntax error: different quark and operator numbers in correlators not allowed!"<< std::endl;
+//    exit(0);
+//  }
+//    for(auto i=0; i < corr_list.operator_numbers.size(); i++){
+//      used_operators.push_back(std::make_pair(corr_list.operator_numbers[i],
+//                                              corr_list.quark_numbers[i]));
+//    } 
+//  }
+//  sort(used_operators.begin(), used_operators.end());
+//  used_operators.erase(std::unique(used_operators.begin(), 
+//                                   used_operators.end()),
+//                       used_operators.end());
+//  // delete doubles
+//  // count through
+//        pdgf write;
+//  for(const auto& op_entry : used_operators){
+//    for(const auto& individual_operator : operator_list[op_entry.first]){
+//      for(const auto op : lookup_corr){
+//        // long check to see if quantum numbers are right
+//        if(op.gamma == individual_operator.gammas &&
+//           op.dis3 == std::get<1>(individual_operator.dis_vec) &&
+//           op.slr == std::get<0>(individual_operator.dis_vec) ) {
+//          for(const auto& mom_vec : individual_operator.mom_vec){
+//            for(auto mom : mom_vec){
+//              if(op.p3 == mom)
+//                // set id to access quantum numbers
+//                write.id_pdg = op.id;
+//          
+//            }
+//          }
+//          // write quark flavours in lookup_Q, 
+//          write.fl.push_back(op_entry.second);
+//          // save pdgf to lookup table
+//          lookup_Q.push_back(write);
+//        }
+//      }
+//    } 
+//  }
+//}
 
 void init_lookup_corr(const Correlator_list& correlator_list, 
                       const std::vector<Operator_list>& operator_list,
