@@ -20,7 +20,7 @@ name_eigenvectors   = eigenvectors
 path_perambulators  = /hiskp2/perambulators/A40.20/nev_66/up
 name_perambulators  = perambulator
 # output path
-output_path = /hiskp2/helmes/correlators/test
+output_path = /hiskp2/helmes/contractions/A40.20/disp/test 
 lattice = A40.20
 
 # quarks to be used
@@ -29,12 +29,12 @@ quark = u:5:TB:2:EI:6:DI:4
 
 # operators to be used
 [operator_lists]
-operator_list = g6.g1.dr(1,0,0).p(1,0,0)
-operator_list = g6.g1.dr(1,0,0).p(-1,0,0)
-#operator_list = g6.g2.d(1,0,0).p0
-#operator_list = g6.g3.d(1,0,0).p0
-#operator_list = g6.g1.d(0,1,0).p0
-#operator_list = g6.g2.d(0,1,0).p(0,0,1)
+operator_list = g5.dr(1,0,0).p0
+operator_list = g5.dr(1,0,0).p0
+operator_list = g5.dl(1,0,0).p0
+operator_list = g5.dl(1,0,0).p0
+operator_list = g5.ds(1,0,0).p0
+operator_list = g5.ds(1,0,0).p0
 #operator_list = g6.g3.d(0,1,0).p0
 #operator_list = g6.g1.d(0,0,1).p0
 #operator_list = g6.g2.d(0,0,1).p0
@@ -42,10 +42,10 @@ operator_list = g6.g1.dr(1,0,0).p(-1,0,0)
 
 # all correlation functions which will be computed !!MUST BE AT END OF FILE!!
 [correlator_lists]
-correlator_list = C2+:Q0:Op0:Q0:Op1
-#correlator_list = C2+:Q0:Op0:Q0:Op1
-#correlator_list = C2+:Q0:Op0:Q0:Op2
-#correlator_list = C2+:Q0:Op1:Q0:Op0
+correlator_list = C2+:Q0:Op1:Q0:Op1
+correlator_list = C2+:Q0:Op02:Q0:Op2
+#correlator_list = C2+:Q0:Op4:Q0:Op5
+#correlator_list = C2+:Q0:Op4:Q0:Op5
 #correlator_list = C2+:Q0:Op1:Q0:Op1
 #correlator_list = C2+:Q0:Op1:Q0:Op2
 #correlator_list = C2+:Q0:Op2:Q0:Op0

@@ -220,11 +220,16 @@ void init_lookup_C2plus_IO(const Correlator_list& correlator_list,
   while(it != lookup_2pt_IO.end()) {
     auto it2 = it;
     it2++;
+    std::cout << "here"  << std::endl;
     while(it2 != lookup_2pt_IO.end()) {
-      if(compare_index_list(*it, *it2))
+      if(compare_index_list(*it, *it2)){
+        std::cout << "erase:" << (*it2).id << std::endl;
         lookup_2pt_IO.erase(it2);
-      else
+      }
+      else{
+        std::cout << "increment:" << (*it2).id << std::endl;
         it2++;
+      }
     }
     it++;
   }

@@ -201,7 +201,8 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
             }
             dir++;
           }
-          // Displace different quarks according to char 'slr', default is r
+          // Displace different quarks according to char 'slr', if nothing is
+          // specified, defaults to r
           if (op_Corr[op.index].slr == 's')
           vdaggerv[op.id][t] = W_t.adjoint() * mom.asDiagonal() * W_t;
           else if (op_Corr[op.index].slr == 'r' || op_Corr[op.index].slr == 'd')
