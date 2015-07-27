@@ -684,7 +684,7 @@ void GaugeField::read_lime_gauge_field_doubleprec_timeslices(double* gaugefield,
       printf("reading gauge fields from files:\n");
     }
     else{
-      printf("\treading gauge fields:\n");
+      //printf("\treading gauge fields:\n");
     }
 
     words_bigendian = big_endian();

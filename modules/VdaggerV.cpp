@@ -137,7 +137,7 @@ void LapH::VdaggerV::create_dis_momenta () {
 void LapH::VdaggerV::build_vdaggerv (const int config_i) {
 
   clock_t t2 = clock();
-  std::cout << "\tbuild vdaggerv:";
+  std::cout << "\tbuild vdaggerv:\n";
 
   const size_t Lt = global_data->get_Lt();
   const size_t Lx = global_data->get_Lx();
@@ -165,6 +165,8 @@ void LapH::VdaggerV::build_vdaggerv (const int config_i) {
       GaugeField gauge(0, 1, dim_row/3, 4);
       gauge.init(Lx, Ly, Lz);
       gauge.read_gauge_field(config_i, t, t);
+      std::cout << "\tread in gauge, ts: " << std::setprecision(2) 
+                << (float) t/Lt*100 << "%\r" << std::flush;
       gauge.smearing_hyp(0, 0.62, 0.62, 3);
   
       read_eigenvectors_from_file(V_t, config_i, t);

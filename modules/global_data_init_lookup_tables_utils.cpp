@@ -133,6 +133,7 @@ bool compare_index_list(index_IO_2& in1, index_IO_2& in2) {
       return false;
       break;
     }
+    else it1++;
   }
 
   return true;
